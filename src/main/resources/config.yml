@@ -1,0 +1,177 @@
+
+trap:
+  enable-pvp: false #Включать ли пвп при использовании трапки
+  schematic: "trap.schem" #Схематика трапки
+  display_name: "§6Трапка" #Название предмета
+  description:
+    - "§7Используйте, чтобы установить ловушку!"
+    - "fsdfdsfdsfsdfds"
+  type: "NETHERITE_SCRAP" #Тип предмета
+  cooldown: 20 #Кулдаун
+  duration: 15 #Длительность
+  messages:
+    already_nearby: "Рядом уже установлен активный пласт или трапка!"
+    cooldown_message: "§cПодождите перед использованием снова!"
+    trap_failed: "Не удалось загрузить ловушку!"
+    pvp-enabled: "§cВы использовали трапку и получили режим пвп!"
+    success_used: "§aВы успешно использовали предмет."
+  sound:
+    type: "BLOCK_ANVIL_PLACE" # https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Sound.html - Все типы звуков в игре.
+    volume: 10.0f # Громкость звука.
+    pitch: 1.0f # Тон звука.
+  banned_regions: #Регионы, где будет запрещено использовать предмет
+    - spawn
+    - new
+    - private
+  flags: #Флаги WorldGuard, которые будут в регоине
+    PVP: ALLOW
+    BUILD: DENY
+  banned_region_flags: #Забаненные флаги(В регионах, где будут данные флаги, нельзя будет использовать предмет)
+  disabled_all_regions: false #Забанить все регионы, кроме глобального
+plate:
+  enable-pvp: false #Включать ли пвп при использовании пласта
+  display_name: "§6Пласт"
+  description: "§7Используйте, чтобы установить пласт!"
+  type: "DRIED_KELP"
+  cooldown: 20
+  duration: 5
+  messages:
+    already_nearby: "Рядом уже установлен активный пласт или трапка!"
+    cooldown_message: "§cПодождите перед использованием снова!"
+    placement_failed: "Не удалось загрузить пласт!"
+    pvp-enabled: "§cВы использовали пласт и получили режим пвп!"
+    success_used: "§aВы успешно использовали предмет."
+  forward_schematic: "plate_forward.schem" # Значение yaw от -22.5 до 22.5(Значение pitch в этом случае неважно)
+  forward_left_schematic: "plate_forward_left.schem" # Значение yaw от 22.5 до 67.5(Значение pitch в этом случае неважно)
+  forward_right_schematic: "plate_forward_right.schem" # Значение yaw от -67.5 до -22.5(Значение pitch в этом случае неважно)
+  backward_schematic: "plate_backward.schem" # Значение yaw от 157.5 до 180 ИЛИ от -157.5 до -180(Значение pitch в этом случае неважно)
+  backward_left_schematic: "plate_backward_left.schem" # Значение yaw от 112.5 до 157.5(Значение pitch в этом случае неважно)
+  backward_right_schematic: "plate_backward_right.schem" # Значение yaw от -112.5 до -157.5(Значение pitch в этом случае неважно)
+  left_schematic: "plate_left.schem" # Значение yaw от 67.5 до 112.5(Значение pitch в этом случае неважно)
+  right_schematic: "plate_right.schem" # Значение yaw от -67.5 до -112.5(Значение pitch в этом случае неважно)
+  up_schematic: "plate_up.schem" # Значение pitch от -45 до -90(Значение yaw в этом случае неважно)
+  down_schematic: "plate.schem" # Значение pitch от 45 до 90(Значение yaw в этом случае неважно)
+  sound:
+    type: "BLOCK_ANVIL_PLACE" # https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Sound.html - Все типы звуков в игре.
+    volume: 10.0f # Громкость звука.
+    pitch: 1.0f # Тон звука.
+  banned_regions:
+    - spawn
+    - new
+    - private
+  banned_region_flags:
+  flags:
+    PVP: ALLOW
+    BUILD: DENY
+  disabled_all_regions: false
+reveal_item:
+  type: SUGAR
+  display_name: "§eЯвная пыль"
+  description: "§7Снимает невидимость с игроков и даёт им эффект свечения."
+  cooldown: 5
+  radius: 10
+  glow_duration: 5
+  duration: 5 # Это длительность Пвп-режима
+  particle_type: CLOUD
+  messages:
+    pvp-enabled-by-player: "§cВы использовали дезориентацию и получили режим пвп!"
+    pvp-enabled-for-player: "§cВозле вас использовали дезориентацию и вы получили режим пвп!"
+    success_used: "§aВы успешно использовали предмет."
+  sound:
+    type: "ENTITY_EXPERIENCE_ORB_PICKUP"
+    volume: 1.0f
+    pitch: 1.0f
+  banned_regions:
+    - spawn
+    - new
+    - private
+  banned_region_flags:
+disorient_item:
+  duration: 5 # Это длительность Пвп-режима
+  display_name: "§dДезориентация"
+  type: "ENDER_EYE"
+  negative_effects:
+    - SLOW:
+        duration: 10
+        amplifier: 1   # Уровень эффекта
+    - BLINDNESS:
+        duration: 10
+        amplifier: 1
+  description:
+    - "§7Используйте, чтобы наложить"
+    - "§7негативные эффекты на игроков поблизости."
+  messages:
+    pvp-enabled-by-player: "§cВы использовали дезориентацию и получили режим пвп!"
+    pvp-enabled-for-player: "§cВозле вас использовали дезориентацию и вы получили режим пвп!"
+    success_used: "§aВы успешно использовали предмет."
+  cooldown: 10
+  radius: 10
+  sound:
+    type: "ENTITY_WITHER_AMBIENT"
+    volume: 1.0f
+    pitch: 1.0f
+  particle_type: "SMOKE_LARGE"
+  banned_regions:
+    - spawn
+    - new
+    - private
+  banned_region_flags:
+    TNT: ALLOW
+  disabled_all_regions: false
+divine_aura:
+  name: "Божья Аура"
+  material: "GHAST_TEAR"
+  description:
+    - "Используйте, чтобы снять с себя"
+    - "негативные эффекты и получить позитивные."
+  messages:
+    success_used: "§aВы успешно использовали предмет."
+  cooldown: 10 # Кулдаун в секундах
+  positive_effects:
+    - REGENERATION:
+        duration: 10
+        amplifier: 1   # Уровень эффекта
+    - ABSORPTION:
+        duration: 10
+        amplifier: 1
+  negative_effects:
+    - WEAKNESS
+    - SLOW
+    - BLINDNESS
+    - HARM
+    - CONFUSION
+    - WITHER
+    - BAD_OMEN
+    - NAUSEA
+    - POISON
+  sound:
+    type: "ENTITY_WITHER_AMBIENT"
+    volume: 1.0f
+    pitch: 1.0f
+  particle_type: "SMOKE_LARGE"
+  banned_regions:
+    - spawn
+    - new
+    - private
+  banned_region_flags:
+  disabled_all_regions: false
+firestorm_item:
+  type: FIRE_CHARGE
+  name: "§cОгненный смерч"
+  description:
+    - "§eИспользуй, чтобы поджечь врагов вокруг!"
+  messages:
+    success_used: "§aВы успешно использовали предмет."
+  cooldown: 15
+  radius: 5
+  fire_duration: 5
+  duration: 5 # Это длительность Пвп-режима
+  sound:
+    type: ENTITY_BLAZE_SHOOT
+    volume: 1.0
+    pitch: 1.5
+  banned_regions:
+    - no-fire
+    - spawn
+  disabled_all_regions: false
+skins:
