@@ -169,7 +169,6 @@ public final class VioTrap extends JavaPlugin implements Listener {
         this.skinCreationMenu = new SkinCreationMenu(this);
         this.getServer().getPluginManager().registerEvents(this.skinCreationMenu, this);
         this.getServer().getMessenger().registerOutgoingPluginChannel(this, "minecraft:client_settings");
-        this.getCommand("removetrap").setExecutor(new RemoveTrapCommand(this));
         this.getCommand("applyplateskin").setExecutor(new ApplyPlateSkinCommand(this, this.pointsManager, this.activeSkinsManager));
         this.pointsManager = new SkinPointsManager(this);
         this.getCommand("skinpoints").setExecutor(new SkinPointsCommand(this, this.pointsManager));
@@ -749,15 +748,6 @@ public final class VioTrap extends JavaPlugin implements Listener {
         return this.getConfig().getStringList("firestorm_item.description");
     }
 
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("viotrapreload") && sender.isOp()) {
-            config = YamlConfiguration.loadConfiguration(this.cfile);
-            this.loadTrapConfig();
-            sender.sendMessage("§dКонфигурация перезагружена!");
-        }
-
-        return true;
-    }
 
     public SkinPointsManager getPointsManager() {
         return this.pointsManager;
