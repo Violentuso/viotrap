@@ -59,17 +59,14 @@ public class ApplySkinCommand implements CommandExecutor {
                         } else {
                             if (isTrapSkin) {
                                 this.activeSkinsManager.setActiveTrapSkin(target.getUniqueId(), skinOrAll);
-                                this.plugin.getLogger().info("[VioTrap] Applied trap skin " + skinOrAll + " for " + target.getName());
 
                             } else if (isPlateSkin) {
                                 this.activeSkinsManager.setActiveTrapSkin(target.getUniqueId(), skinOrAll);
-                                this.plugin.getLogger().info("[VioTrap] Applied plate skin " + skinOrAll + " for " + target.getName());
 
                             }
 
                             if (requiredPoints > 0) {
                                 this.pointsManager.removePoints(target.getUniqueId(), skinOrAll, requiredPoints);
-                                this.plugin.getLogger().info("[VioTrap] Removed " + requiredPoints + " points for skin " + skinOrAll + " from " + target.getName());
                             }
 
                             sender.sendMessage("§aСкин " + skinOrAll + " успешно применён для игрока " + target.getName() + "!");
@@ -83,12 +80,10 @@ public class ApplySkinCommand implements CommandExecutor {
                     for(String skin : this.plugin.getSkinNames()) {
                         int requiredPoints = this.plugin.getConfig().getInt("skins." + skin + ".points", 0);
                         if (requiredPoints > 0 && this.pointsManager.getPoints(target.getUniqueId(), skin) < requiredPoints) {
-                            this.plugin.getLogger().info("[VioTrap] Skipped trap skin " + skin + " for " + target.getName() + ": insufficient points (" + this.pointsManager.getPoints(target.getUniqueId(), skin) + "/" + requiredPoints + ")");
                         } else {
                             this.activeSkinsManager.setActiveTrapSkin(target.getUniqueId(), skinOrAll);
                             if (requiredPoints > 0) {
                                 this.pointsManager.removePoints(target.getUniqueId(), skin, requiredPoints);
-                                this.plugin.getLogger().info("[VioTrap] Removed " + requiredPoints + " points for trap skin " + skin + " from " + target.getName());
                             }
 
                             ++appliedCount;

@@ -102,7 +102,6 @@ public class TrapItemListener implements Listener {
 
         this.loadTrapsFromConfig();
         this.loadCooldownsFromConfig();
-        plugin.getLogger().info("[VioTrap] TrapItemListener инициализирован, загружено " + this.activeTrapTimers.size() + " активных трапок");
     }
 
     @EventHandler
@@ -164,9 +163,8 @@ public class TrapItemListener implements Listener {
 
                                             int originalAmount = item.getAmount();
                                             item.setAmount(originalAmount - 1);
-                                            Logger var10000 = this.plugin.getLogger();
                                             String var10001 = String.valueOf(player.getUniqueId());
-                                            var10000.info("[VioTrap] Trap consumed for player " + var10001 + ", new amount: " + item.getAmount());
+
                                             BukkitScheduler var70 = Bukkit.getScheduler();
                                             VioTrap var72 = this.plugin;
                                             Objects.requireNonNull(player);
@@ -202,7 +200,6 @@ public class TrapItemListener implements Listener {
                                             this.saveTrapToConfig(player, location, skin);
                                             TrapData trapData = new TrapData(player.getUniqueId(), location, skin, (long)this.plugin.getTrapDuration());
                                             this.activeTrapTimers.put(trapId, trapData);
-                                            this.plugin.getLogger().info("[VioTrap] Трапка " + trapId + " создана с длительностью " + this.plugin.getTrapDuration() + " секунд");
                                             this.createTrapRegion(player, location, sizeX, sizeY, sizeZ, skin);
 
                                             try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(location.getWorld()))) {
@@ -223,7 +220,6 @@ public class TrapItemListener implements Listener {
                                                 Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
                                                     TrapData data = this.activeTrapTimers.get(trapId);
                                                     if (data != null) {
-                                                        this.plugin.getLogger().info("[VioTrap] Время трапки " + trapId + " истекло, восстанавливаем блоки");
                                                         this.restoreBlocks(data.getPlayerId());
                                                         this.removeTrapRegion(trapId, data.getLocation());
                                                         this.removeTrapFromFile(data.getLocation());
@@ -232,17 +228,14 @@ public class TrapItemListener implements Listener {
                                                         float soundVolumeEnded = (float)(finalSkin.equals("default") ? (double)this.plugin.getTrapSoundVolumeEnded() : this.plugin.getConfig().getDouble("skins." + finalSkin + ".sound.volume-ended", (double)this.plugin.getTrapSoundVolumeEnded()));
                                                         float soundPitchEnded = (float)(finalSkin.equals("default") ? (double)this.plugin.getTrapSoundPitchEnded() : this.plugin.getConfig().getDouble("skins." + finalSkin + ".sound.pitch-ended", (double)this.plugin.getTrapSoundPitchEnded()));
 
-                                                        DenyItemUseCustomAction.clearForPlayer(player.getUniqueId());
                                                         location.getWorld().playSound(location, Sound.valueOf(soundTypeEnded), soundVolumeEnded, soundPitchEnded);
                                                     } else {
-                                                        this.plugin.getLogger().warning("[VioTrap] Трапка " + trapId + " не найдена в activeTrapTimers при истечении времени");
                                                     }
 
                                                 }, (int)(skin.equals("default") ? (double)this.plugin.getTrapDuration() * 20 : this.plugin.getConfig().getInt("skins." + skin + ".duration", (int)this.plugin.getTrapCooldown()) * 20));
                                             }
                                         }
                                     } catch (Exception e) {
-                                        this.plugin.getLogger().warning("[VioTrap] Ошибка при установке трапки: " + e.getMessage());
                                         e.printStackTrace();
                                         player.sendMessage("§cНе удалось установить трапку!");
                                     }
@@ -268,7 +261,6 @@ public class TrapItemListener implements Listener {
         String path = "traps." + var10000 + "." + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
         this.plugin.getTrapsConfig().set(path, (Object)null);
         this.plugin.saveTrapsConfig();
-        this.plugin.getLogger().info("[VioTrap] Трапка удалена из конфига: " + path);
     }
 
     private void replaceSkinnedTrapsWithNewSkin(Player player, String oldSkin, String newSkin) {
@@ -301,7 +293,6 @@ public class TrapItemListener implements Listener {
         if (endTime != null) {
             long remaining = (endTime - System.currentTimeMillis()) / 1000;
             if (remaining > 0) {
-                plugin.getLogger().info("[VioTrap] Кулдаун активен для " + skin + ": осталось " + remaining + "с");
                 return true;
             }
         }
@@ -310,42 +301,44 @@ public class TrapItemListener implements Listener {
     private void setCooldownActive(UUID uuid, String skin, long durationMs) {
         playerCooldowns.computeIfAbsent(uuid, k -> new HashMap<>())
                 .put(skin, System.currentTimeMillis() + durationMs);
-        plugin.getLogger().info("[VioTrap] Установлен кулдаун для " + skin + ": " + (durationMs / 1000) + "с");
     }
-    // Файл: TrapItemListener.java
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onPlayerMove(PlayerMoveEvent event) {
-        Player player = event.getPlayer();
-        Location from = event.getFrom();
-        Location to = event.getTo();
+        final Player player = event.getPlayer();
+        final Location from = event.getFrom();
+        final Location to = event.getTo();
 
-        // Оптимизация: если не сменился блок — пропускаем дальнейшие проверки
+        // 1. Быстрая проверка: Смена блока?
         if (from.getBlockX() == to.getBlockX() &&
                 from.getBlockY() == to.getBlockY() &&
                 from.getBlockZ() == to.getBlockZ()) {
             return;
         }
 
-        boolean wasInTrap = this.playersInTrapRegions.contains(player.getUniqueId()); // Используем playersInTrapRegions для надежности
-        boolean isInTrapNow = isInAnyTrapRegion(to); // Проверка нахождения в регионе WorldGuard
+        final Location location = to;
+        final boolean wasInTrapRegion = this.playersInTrapRegions.contains(player.getUniqueId());
+        final boolean isNowInTrapRegion = this.isInAnyTrapRegion(location);
 
-        // Логика ВХОДА
-        if (!wasInTrap && isInTrapNow) {
-            this.playersInTrapRegions.add(player.getUniqueId());
-            this.enablePvpForPlayer(player);
 
-        } else if (wasInTrap && !isInTrapNow) {
+        if (!wasInTrapRegion && isNowInTrapRegion) {
 
-            // 1. Снятие действия
-            player.sendMessage("§7Запреты на предметы сняты (вы вышли из ловушки)");
-            this.plugin.getLogger().info("[TrapListener] Player " + player.getName() + " exited trap region. Calling clearForPlayer.");
 
-            DenyItemUseCustomAction.clearForPlayer(player.getUniqueId());
-            // Добавьте очистку других действий, например CooldownItemCustomAction.clearForPlayer(player.getUniqueId());
+            if (this.playersInTrapRegions.add(player.getUniqueId())) {
 
-            // 2. Удаление игрока из списка
-            this.playersInTrapRegions.remove(player.getUniqueId());
+                this.enablePvpForPlayer(player);
+
+                DenyItemUseCustomAction.applyForPlayer(player.getUniqueId());
+            }
+
+
+        } else if (wasInTrapRegion && !isNowInTrapRegion) {
+
+
+            if (this.playersInTrapRegions.remove(player.getUniqueId())) {
+
+                DenyItemUseCustomAction.clearForPlayer(player.getUniqueId());
+            }
         }
     }
 
@@ -353,16 +346,13 @@ public class TrapItemListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
-        this.plugin.getLogger().info("[VioTrap] Игрок " + String.valueOf(playerId) + " вошёл, проверяем кулдауны");
         Material trapMaterial = Material.getMaterial(this.plugin.getConfig().getString("trap.item", "TRIPWIRE_HOOK"));
         if (trapMaterial != null && this.isCooldownActive(playerId, trapMaterial)) {
             long remainingTime = this.getCooldownRemainingTime(playerId, trapMaterial);
             if (remainingTime > 0L) {
                 int remainingTicks = (int)(remainingTime / 50L);
                 player.setCooldown(trapMaterial, remainingTicks);
-                Logger var10000 = this.plugin.getLogger();
                 String var10001 = String.valueOf(playerId);
-                var10000.info("[VioTrap] Восстановлен кулдаун для игрока " + var10001 + " на " + remainingTicks + " тиков");
             } else {
                 this.removeCooldownFromConfig(playerId, trapMaterial);
             }
@@ -373,17 +363,25 @@ public class TrapItemListener implements Listener {
     public boolean isInAnyTrapRegion(Location location) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(location.getWorld()));
+
+
         if (regionManager == null) {
             return false;
         } else {
             BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
 
-            for(ProtectedRegion region : regionManager.getApplicableRegions(vector).getRegions()) {
-                if (region.getId().endsWith("_trap")) {
+
+            ApplicableRegionSet applicableRegions = regionManager.getApplicableRegions(vector);
+
+
+            for(ProtectedRegion region : applicableRegions.getRegions()) {
+
+                if (region.getId().contains("_trap_")) {
                     return true;
                 }
             }
 
+            // Если ловушка не найдена
             return false;
         }
     }
@@ -406,9 +404,7 @@ public class TrapItemListener implements Listener {
         String path = "cooldowns." + var10000 + "." + material.toString();
         this.plugin.getTrapsConfig().set(path + ".endTime", endTime);
         this.plugin.saveTrapsConfig();
-        Logger var8 = this.plugin.getLogger();
         String var10001 = String.valueOf(playerId);
-        var8.info("[VioTrap] Сохранён кулдаун для игрока " + var10001 + " на предмет " + String.valueOf(material) + ", endTime: " + endTime);
         long remainingTime = endTime - System.currentTimeMillis();
         if (remainingTime > 0L) {
             Bukkit.getScheduler().runTaskLater(this.plugin, () -> this.removeCooldownFromConfig(playerId, material), remainingTime / 50L);
@@ -446,15 +442,11 @@ public class TrapItemListener implements Listener {
         String path = "cooldowns." + var10000 + "." + material.toString();
         this.plugin.getTrapsConfig().set(path, (Object)null);
         this.plugin.saveTrapsConfig();
-        Logger var4 = this.plugin.getLogger();
         String var10001 = String.valueOf(playerId);
-        var4.info("[VioTrap] Удалён кулдаун для игрока " + var10001 + " на предмет " + String.valueOf(material));
     }
 
     private void loadCooldownsFromConfig() {
-        this.plugin.getLogger().info("[VioTrap] Загружаем кулдауны из traps.yml...");
         if (!this.plugin.getTrapsConfig().contains("cooldowns")) {
-            this.plugin.getLogger().info("[VioTrap] Раздел cooldowns в конфиге отсутствует");
         } else {
             ConfigurationSection cooldownsSection = this.plugin.getTrapsConfig().getConfigurationSection("cooldowns");
 
@@ -463,7 +455,6 @@ public class TrapItemListener implements Listener {
                 try {
                     playerId = UUID.fromString(playerIdStr);
                 } catch (IllegalArgumentException var15) {
-                    this.plugin.getLogger().warning("[VioTrap] Некорректный UUID игрока в cooldowns: " + playerIdStr);
                     continue;
                 }
 
@@ -472,7 +463,6 @@ public class TrapItemListener implements Listener {
                 for(String materialName : playerSection.getKeys(false)) {
                     Material material = Material.getMaterial(materialName);
                     if (material == null) {
-                        this.plugin.getLogger().warning("[VioTrap] Некорректный материал в cooldowns: " + materialName);
                     } else {
                         long endTime = playerSection.getLong(materialName + ".endTime", 0L);
                         long currentTime = System.currentTimeMillis();
@@ -481,7 +471,6 @@ public class TrapItemListener implements Listener {
                             this.removeCooldownFromConfig(playerId, material);
                         } else {
                             Bukkit.getScheduler().runTaskLater(this.plugin, () -> this.removeCooldownFromConfig(playerId, material), remainingTime / 50L);
-                            this.plugin.getLogger().info("[VioTrap] Загружен кулдаун для игрока " + String.valueOf(playerId) + " на предмет " + materialName + ", оставшееся время: " + remainingTime + " мс");
                         }
                     }
                 }
@@ -501,7 +490,6 @@ public class TrapItemListener implements Listener {
         this.plugin.getTrapsConfig().set(path + ".skin", skin);
         this.plugin.getTrapsConfig().set(path + ".endTime", System.currentTimeMillis() + (long)(this.plugin.getTrapDuration() * 1000));
         this.plugin.saveTrapsConfig();
-        this.plugin.getLogger().info("[VioTrap] Трапка сохранена в конфиг: " + path + ", skin: " + skin + ", endTime: " + (System.currentTimeMillis() + (long)(this.plugin.getTrapDuration() * 1000)));
     }
 
     private void applyEffects(Player player, String configPath) {
@@ -512,7 +500,6 @@ public class TrapItemListener implements Listener {
                     int amplifier = this.plugin.getConfig().getInt(configPath + "." + effectName + ".amplifier");
                     player.addPotionEffect(new PotionEffect(PotionEffectType.getByName(effectName), duration, amplifier));
                 } catch (Exception var6) {
-                    this.plugin.getLogger().warning("Ошибка применения эффекта: " + effectName);
                 }
 
             });
@@ -523,32 +510,26 @@ public class TrapItemListener implements Listener {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
         if (regionManager == null) {
-            this.plugin.getLogger().info("[VioTrap] RegionManager для мира " + worldName + " не найден, трапка разрешена по умолчанию");
             return false;
         } else {
             BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
             ApplicableRegionSet applicableRegions = regionManager.getApplicableRegions(vector);
             List<ProtectedRegion> regions = new ArrayList(applicableRegions.getRegions());
             if (regions.isEmpty()) {
-                this.plugin.getLogger().info("[VioTrap] Регионы не найдены в точке " + location.toString() + ", трапка разрешена");
                 return false;
             } else {
                 regions.sort((r1, r2) -> Integer.compare(r2.getPriority(), r1.getPriority()));
                 ProtectedRegion highestPriorityRegion = (ProtectedRegion)regions.get(0);
                 int highestPriority = highestPriorityRegion.getPriority();
-                Logger var10000 = this.plugin.getLogger();
                 String var10001 = highestPriorityRegion.getId();
-                var10000.info("[VioTrap] Регион с наивысшим приоритетом: " + var10001 + " (приоритет: " + highestPriority + ")");
+
                 boolean disabledAllRegions = this.plugin.getConfig().getBoolean("trap.disabled_all_regions", false);
                 List<String> bannedRegions = this.plugin.getConfig().getStringList("trap.banned_regions");
                 if (disabledAllRegions && !highestPriorityRegion.getId().equals("__default__")) {
-                    this.plugin.getLogger().info("[VioTrap] Трапка запрещена в регионе " + highestPriorityRegion.getId() + " из-за disabled_all_regions");
                     return true;
                 } else if (bannedRegions.contains(highestPriorityRegion.getId())) {
-                    this.plugin.getLogger().info("[VioTrap] Трапка запрещена в регионе " + highestPriorityRegion.getId() + " из-за banned_regions");
                     return true;
                 } else {
-                    this.plugin.getLogger().info("[VioTrap] Трапка разрешена в регионе " + highestPriorityRegion.getId());
                     return false;
                 }
             }
@@ -559,42 +540,34 @@ public class TrapItemListener implements Listener {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
         if (regionManager == null) {
-            this.plugin.getLogger().info("[VioTrap] RegionManager для мира " + worldName + " не найден, флаги не проверяются");
             return false;
         } else {
             ConfigurationSection bannedFlagsSection = this.plugin.getConfig().getConfigurationSection("trap.banned_region_flags");
             if (bannedFlagsSection == null) {
-                this.plugin.getLogger().info("[VioTrap] Секция banned_region_flags отсутствует в конфиге");
                 return false;
             } else {
                 BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
                 ApplicableRegionSet applicableRegions = regionManager.getApplicableRegions(vector);
                 List<ProtectedRegion> regions = new ArrayList(applicableRegions.getRegions());
                 if (regions.isEmpty()) {
-                    this.plugin.getLogger().info("[VioTrap] Регионы не найдены в точке " + location.toString() + ", флаги не проверяются");
                     return false;
                 } else {
                     regions.sort((r1, r2) -> Integer.compare(r2.getPriority(), r1.getPriority()));
                     ProtectedRegion highestPriorityRegion = (ProtectedRegion)regions.get(0);
                     int highestPriority = highestPriorityRegion.getPriority();
-                    Logger var10000 = this.plugin.getLogger();
                     String var10001 = highestPriorityRegion.getId();
-                    var10000.info("[VioTrap] Проверка флагов в регионе с наивысшим приоритетом: " + var10001 + " (приоритет: " + highestPriority + ")");
                     if (highestPriorityRegion.getId().endsWith("_trap")) {
-                        this.plugin.getLogger().info("[VioTrap] Регион " + highestPriorityRegion.getId() + " является трапкой, флаги игнорируются");
+
                         return false;
                     } else {
                         for(String flagName : bannedFlagsSection.getKeys(false)) {
                             StateFlag flag = (StateFlag)Flags.fuzzyMatchFlag(WorldGuard.getInstance().getFlagRegistry(), flagName);
                             if (flag == null) {
-                                this.plugin.getLogger().warning("[VioTrap] Флаг " + flagName + " не найден в WorldGuard");
                             } else if (highestPriorityRegion.getFlag(flag) != null) {
-                                this.plugin.getLogger().info("[VioTrap] Обнаружен запрещённый флаг " + flagName + " в регионе " + highestPriorityRegion.getId());
                                 return true;
                             }
                         }
 
-                        this.plugin.getLogger().info("[VioTrap] Запрещённые флаги не найдены в регионе " + highestPriorityRegion.getId());
                         return false;
                     }
                 }
@@ -647,8 +620,6 @@ public class TrapItemListener implements Listener {
             }
         }
 
-        plugin.getLogger().info("§e[VioTrap DEBUG] === НАЧАЛО СОХРАНЕНИЯ БЛОКОВ ДЛЯ " + playerId + " ===");
-        plugin.getLogger().info("§e[VioTrap DEBUG] Затронуто локаций: " + locationsToCheck.size());
 
         int chestCount = 0;
         int doubleChestCount = 0;
@@ -666,7 +637,6 @@ public class TrapItemListener implements Listener {
             if (state instanceof CreatureSpawner) {
                 CreatureSpawner spawner = (CreatureSpawner) state;
                 spawnedType = spawner.getSpawnedType().name();
-                plugin.getLogger().info("§a[VioTrap DEBUG] Спавнер на " + loc + " → " + spawnedType);
             }
 
             // Сундуки и другие контейнеры
@@ -700,13 +670,9 @@ public class TrapItemListener implements Listener {
                         }
                     }
 
-                    plugin.getLogger().info("§6[VioTrap DEBUG] §lDOUBLE CHEST найден на " + loc +
-                            " | Предметов: " + contents.length +
-                            " | Парная половина: " + (pairedLocation != null ? pairedLocation.toString() : "НЕ НАЙДЕНА"));
                 } else {
                     // Одиночный контейнер
                     contents = inventory.getContents() != null ? inventory.getContents().clone() : new ItemStack[27];
-                    plugin.getLogger().info("§b[VioTrap DEBUG] §lОДИНОЧНЫЙ СУНДУК на " + loc + " | Предметов: " + contents.length);
                 }
             }
 
@@ -724,38 +690,27 @@ public class TrapItemListener implements Listener {
 
             replacedBlocks.put(loc.clone(), blockData);
         }
-
-        plugin.getLogger().info("§e[VioTrap DEBUG] === СОХРАНЕНИЕ ЗАВЕРШЕНО ===");
-        plugin.getLogger().info("§e[VioTrap DEBUG] Всего блоков сохранено: " + replacedBlocks.size());
-        plugin.getLogger().info("§e[VioTrap DEBUG] Сундуков всего: " + chestCount + " | Двойных: " + doubleChestCount);
     }
 
     public void restoreAllBlocks() {
-        this.plugin.getLogger().info("[VioTrap] Вызван restoreAllBlocks!");
         if (this.playerReplacedBlocks.isEmpty()) {
-            this.plugin.getLogger().info("[VioTrap] playerReplacedBlocks пуст, загружаем данные из конфига...");
             this.loadTrapsFromConfig();
         }
 
         for(Object playerId : new HashSet(this.playerReplacedBlocks.keySet())) {
-            this.plugin.getLogger().info("[VioTrap] Восстанавливаем блоки для игрока " + String.valueOf(playerId));
             this.restoreBlocks((UUID) playerId);
         }
 
-        this.plugin.getLogger().info("[VioTrap] Все блоки успешно восстановлены.");
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         UUID playerId = event.getPlayer().getUniqueId();
-        this.plugin.getLogger().info("[VioTrap] Игрок " + String.valueOf(playerId) + " вышел, удаляем из списка игроков в регионах трапок");
         this.playersInTrapRegions.remove(playerId);
 
         for(Map.Entry<String, TrapData> entry : this.activeTrapTimers.entrySet()) {
             if (((TrapData)entry.getValue()).getPlayerId().equals(playerId)) {
-                Logger var10000 = this.plugin.getLogger();
                 String var10001 = (String)entry.getKey();
-                var10000.info("[VioTrap] Трапка " + var10001 + " остаётся активной для игрока " + String.valueOf(playerId));
             }
         }
 
@@ -764,11 +719,9 @@ public class TrapItemListener implements Listener {
     private void restoreBlocks(UUID playerId) {
         Map<Location, TrapBlockData> replacedBlocks = this.playerReplacedBlocks.get(playerId);
         if (replacedBlocks == null || replacedBlocks.isEmpty()) {
-            this.plugin.getLogger().info("[VioTrap] Нет блоков для восстановления у игрока " + playerId);
             return;
         }
 
-        this.plugin.getLogger().info("[VioTrap] Восстановление " + replacedBlocks.size() + " блоков для " + playerId);
 
         for (Map.Entry<Location, TrapBlockData> entry : replacedBlocks.entrySet()) {
             Location location = entry.getKey();
@@ -799,14 +752,12 @@ public class TrapItemListener implements Listener {
                 if (holder instanceof DoubleChest) {
                     DoubleChest doubleChest = (DoubleChest) holder;
                     doubleChest.getInventory().setContents(blockData.getContents());
-                    this.plugin.getLogger().info("[VioTrap] Восстановлен двойной сундук на " + location);
                 } else {
                     // Одиночный контейнер — обрезаем до 27 слотов
                     ItemStack[] oldContents = blockData.getContents();
                     ItemStack[] newContents = new ItemStack[27];
                     System.arraycopy(oldContents, 0, newContents, 0, Math.min(oldContents.length, 27));
                     container.getInventory().setContents(newContents);
-                    this.plugin.getLogger().info("[VioTrap] Восстановлен одиночный контейнер на " + location);
                 }
             }
 
@@ -815,13 +766,10 @@ public class TrapItemListener implements Listener {
         }
 
         this.playerReplacedBlocks.remove(playerId);
-        this.plugin.getLogger().info("[VioTrap] Блоки успешно восстановлены для игрока " + playerId);
     }
 
     private void loadTrapsFromConfig() {
-        this.plugin.getLogger().info("[VioTrap] Загружаем ловушки из traps.yml...");
         if (!this.plugin.getTrapsConfig().contains("traps")) {
-            this.plugin.getLogger().info("[VioTrap] Раздел traps в конфиге отсутствует");
         } else {
             ConfigurationSection trapsSection = this.plugin.getTrapsConfig().getConfigurationSection("traps");
 
@@ -839,13 +787,11 @@ public class TrapItemListener implements Listener {
                             String skin = trapSection.getString("skin", "default");
                             Location location = new Location(Bukkit.getWorld(world), (double)x, (double)y, (double)z);
                             if (Bukkit.getWorld(world) == null) {
-                                this.plugin.getLogger().warning("[VioTrap] Мир " + world + " не загружен, пропускаем трапку " + trapKey);
                             } else {
                                 long currentTime = System.currentTimeMillis();
                                 long endTime = trapSection.getLong("endTime", currentTime + (long)(this.plugin.getTrapDuration() * 1000));
                                 long remainingTicks = (endTime - currentTime) / 50L;
                                 if (remainingTicks <= 0L) {
-                                    this.plugin.getLogger().info("[VioTrap] Трапка " + trapKey + " истекла, удаляем");
                                     this.restoreBlocks(playerId);
                                     this.removeTrapRegion(String.valueOf(playerId) + "_trap_" + x + "_" + y + "_" + z, location);
                                     this.removeTrapFromFile(location);
@@ -860,7 +806,6 @@ public class TrapItemListener implements Listener {
                                         try {
                                             File schematicFile = new File("plugins/WorldEdit/schematics/" + schematic);
                                             if (!schematicFile.exists()) {
-                                                this.plugin.getLogger().warning("[VioTrap] Схематика " + schematic + " для трапки " + trapKey + " не найдена");
                                                 continue;
                                             }
 
@@ -874,18 +819,15 @@ public class TrapItemListener implements Listener {
                                                 this.createTrapRegion((Player)null, location, sizeX, sizeY, sizeZ, skin);
                                             }
                                         } catch (Exception e) {
-                                            this.plugin.getLogger().warning("[VioTrap] Ошибка при загрузке схематики для трапки " + trapKey + ": " + e.getMessage());
                                             continue;
                                         }
 
                                         String trapId = String.valueOf(playerId) + "_trap_" + x + "_" + y + "_" + z;
                                         TrapData trapData = new TrapData(playerId, location, skin, remainingTicks / 20L);
                                         this.activeTrapTimers.put(trapId, trapData);
-                                        this.plugin.getLogger().info("[VioTrap] Загружена трапка " + trapId + " с оставшимся временем " + remainingTicks + " тиков");
                                         Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
                                             TrapData data = this.activeTrapTimers.get(trapId);
                                             if (data != null) {
-                                                this.plugin.getLogger().info("[VioTrap] Время трапки " + trapId + " истекло, восстанавливаем блоки");
                                                 this.restoreBlocks(data.getPlayerId());
                                                 this.removeTrapRegion(trapId, data.getLocation());
                                                 this.removeTrapFromFile(data.getLocation());
@@ -895,12 +837,10 @@ public class TrapItemListener implements Listener {
                                                 float soundPitchEnded = (float)(skin.equals("default") ? (double)this.plugin.getTrapSoundPitchEnded() : this.plugin.getConfig().getDouble("skins." + skin + ".sound.pitch-ended", (double)this.plugin.getTrapSoundPitchEnded()));
                                                 location.getWorld().playSound(location, Sound.valueOf(soundTypeEnded), soundVolumeEnded, soundPitchEnded);
                                             } else {
-                                                this.plugin.getLogger().warning("[VioTrap] Трапка " + trapId + " не найдена в activeTrapTimers при истечении времени");
                                             }
 
                                         }, remainingTicks);
                                     } else {
-                                        this.plugin.getLogger().warning("[VioTrap] Скин " + skin + " для трапки " + trapKey + " не найден, пропускаем");
                                     }
                                 }
                             }
@@ -909,7 +849,6 @@ public class TrapItemListener implements Listener {
                 }
             }
 
-            this.plugin.getLogger().info("[VioTrap] Загружено " + this.activeTrapTimers.size() + " активных ловушек.");
         }
     }
 
@@ -921,7 +860,6 @@ public class TrapItemListener implements Listener {
         BlockVector3 min = BlockVector3.at((double)location.getBlockX() - sizeX / (double)2.0F, (double)location.getBlockY() - sizeY / (double)2.0F + (double)2.0F, (double)location.getBlockZ() - sizeZ / (double)2.0F);
         BlockVector3 max = BlockVector3.at((double)location.getBlockX() + sizeX / (double)2.0F, (double)location.getBlockY() + sizeY / (double)2.0F + (double)1.0F, (double)location.getBlockZ() + sizeZ / (double)2.0F);
         if (regionManager == null) {
-            this.plugin.getLogger().warning("[VioTrap] RegionManager для мира " + location.getWorld().getName() + " не найден");
         } else {
             if (sizeX == (double)5.0F && sizeY == (double)5.0F && sizeZ == (double)5.0F) {
                 min = BlockVector3.at((double)location.getBlockX() - sizeX / (double)2.0F, (double)location.getBlockY() - sizeY / (double)2.0F + (double)2.0F, (double)location.getBlockZ() - sizeZ / (double)2.0F);
@@ -938,10 +876,8 @@ public class TrapItemListener implements Listener {
             ConfigurationSection flagsSection;
             if (skin != null && !skin.isEmpty() && !skin.equals("default") && this.plugin.getConfig().contains("skins." + skin + ".flags")) {
                 flagsSection = this.plugin.getConfig().getConfigurationSection("skins." + skin + ".flags");
-                this.plugin.getLogger().info("[VioTrap] Используются флаги скина " + skin + " для трапки " + trapId);
             } else {
                 flagsSection = this.plugin.getConfig().getConfigurationSection("trap.flags");
-                this.plugin.getLogger().info("[VioTrap] Используются флаги по умолчанию из trap.flags для трапки " + trapId);
             }
 
             if (flagsSection != null) {
@@ -951,7 +887,6 @@ public class TrapItemListener implements Listener {
                     flags.put(key, flagsSection.getString(key));
                 }
 
-                this.plugin.getLogger().info("[VioTrap] Обработка флагов для трапки " + trapId + ": " + String.valueOf(flags));
 
                 for(Map.Entry<String, String> flagEntry : flags.entrySet()) {
                     String flagName = flagEntry.getKey();
@@ -965,11 +900,9 @@ public class TrapItemListener implements Listener {
                                 player.sendMessage("§c" + errorMsg);
                             }
 
-                            this.plugin.getLogger().warning(errorMsg);
                         } else {
                             StateFlag.State state = State.valueOf(stateValue);
                             region.setFlag(flag, state);
-                            this.plugin.getLogger().info("[VioTrap] Установлен флаг " + flagName + ": " + stateValue + " для региона " + trapId);
                         }
                     } catch (IllegalArgumentException var24) {
                         String errorMsg = "[VioTrap] Некорректное значение для флага '" + flagName + "' в трапке " + trapId + ": " + stateValue;
@@ -977,17 +910,14 @@ public class TrapItemListener implements Listener {
                             player.sendMessage("§c" + errorMsg);
                         }
 
-                        this.plugin.getLogger().warning(errorMsg);
                     }
                 }
             } else {
-                this.plugin.getLogger().warning("[VioTrap] Секция флагов не найдена для трапки " + trapId);
             }
 
             region.setPriority(52);
             regionManager.addRegion(region);
             this.activeTraps.put(trapId, region);
-            this.plugin.getLogger().info("[VioTrap] Регион трапки " + trapId + " создан");
         }
     }
 
@@ -997,11 +927,8 @@ public class TrapItemListener implements Listener {
         if (regionManager != null) {
             regionManager.removeRegion(trapId);
             this.activeTraps.remove(trapId);
-            this.plugin.getLogger().info("[VioTrap] Регион трапки " + trapId + " удалён");
         } else {
-            Logger var10000 = this.plugin.getLogger();
             String var10001 = location.getWorld().getName();
-            var10000.warning("[VioTrap] RegionManager для мира " + var10001 + " не найден при удалении трапки " + trapId);
         }
 
     }
@@ -1015,7 +942,6 @@ public class TrapItemListener implements Listener {
                 for(String regionName : regionManager.getRegions().keySet()) {
                     if (regionName.endsWith("_trap")) {
                         regionManager.removeRegion(regionName);
-                        this.plugin.getLogger().info("[VioTrap] Удалён регион " + regionName + " при очистке всех трапок");
                     }
                 }
             }
@@ -1025,7 +951,6 @@ public class TrapItemListener implements Listener {
         this.activeTraps.clear();
         this.playersInTrapRegions.clear();
         this.activeTrapTimers.clear();
-        this.plugin.getLogger().info("[VioTrap] Все трапки и связанные данные очищены");
     }
 
     public Map<String, List<CustomAction>> getSkinActions() {

@@ -24,7 +24,6 @@ public class ActiveSkinsManager {
             try {
                 activeSkinsFile.createNewFile();
             } catch (IOException e) {
-                plugin.getLogger().severe("Не удалось создать active_skins.yml: " + e.getMessage());
             }
         }
         this.activeSkins = YamlConfiguration.loadConfiguration(activeSkinsFile);
@@ -37,7 +36,6 @@ public class ActiveSkinsManager {
         activeSkins.set(path, skin);
         saveConfig();
         if (old != null && !old.equals(skin)) {
-            plugin.getLogger().info("[VioTrap] Трап-скин игрока " + playerUUID + " изменён: " + old + " → " + skin);
         }
     }
 
@@ -48,7 +46,6 @@ public class ActiveSkinsManager {
         activeSkins.set(path, skin);
         saveConfig();
         if (old != null && !old.equals(skin)) {
-            plugin.getLogger().info("[VioTrap] Пласт-скин игрока " + playerUUID + " изменён: " + old + " → " + skin);
         }
     }
 
@@ -72,7 +69,6 @@ public class ActiveSkinsManager {
         try {
             activeSkins.save(activeSkinsFile);
         } catch (IOException e) {
-            plugin.getLogger().severe("Не удалось сохранить active_skins.yml: " + e.getMessage());
         }
     }
 }

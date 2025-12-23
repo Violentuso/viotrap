@@ -15,22 +15,18 @@ public class CustomActionFactory {
         List<CustomAction> actions = new ArrayList<>();
         ConfigurationSection actionsSection = plugin.getConfig().getConfigurationSection("skins." + skinName + ".actions");
         if (actionsSection == null) {
-            plugin.getLogger().info("[VioTrap] Actions не найдены для скина: " + skinName);
             return actions;
         }
 
-        plugin.getLogger().info("[VioTrap] Загрузка actions для скина: " + skinName + ", найдено действий: " + actionsSection.getKeys(false).size());
 
         for (String actionKey : actionsSection.getKeys(false)) {
             ConfigurationSection actionConfig = actionsSection.getConfigurationSection(actionKey);
             if (actionConfig == null) {
-                plugin.getLogger().warning("[VioTrap] Пустая секция действия: " + actionKey + " в скине " + skinName);
                 continue;
             }
 
             String type = actionConfig.getString("type");
             if (type == null) {
-                plugin.getLogger().warning("[VioTrap] Тип действия не указан для: " + actionKey + " в скине " + skinName);
                 continue;
             }
 
@@ -54,11 +50,9 @@ public class CustomActionFactory {
                     loadDenyItemUseAction(actionConfig, actionKey, skinName, actions, plugin);
                 break;
                     default:
-                    plugin.getLogger().warning("[VioTrap] Неизвестный тип действия '" + type + "' для: " + actionKey + " в скине " + skinName);
             }
         }
 
-        plugin.getLogger().info("[VioTrap] Загружено " + actions.size() + " actions для скина: " + skinName);
         return actions;
     }
     private static void loadCooldownItemAction(ConfigurationSection cfg, String key, String skin, List<CustomAction> actions, VioTrap plugin) {
@@ -67,7 +61,6 @@ public class CustomActionFactory {
         int seconds = cfg.getInt("seconds", 30);
 
         if (itemNames.isEmpty() || seconds <= 0 || !isValidTarget(target)) {
-            plugin.getLogger().warning("Некорректные параметры cooldownitem в " + key + " (скин: " + skin + ")");
             return;
         }
 
@@ -75,12 +68,10 @@ public class CustomActionFactory {
         for (String name : itemNames) {
             Material mat = Material.matchMaterial(name.toUpperCase());
             if (mat != null) materials.add(mat);
-            else plugin.getLogger().warning("Неизвестный материал в cooldownitem: " + name);
         }
 
         if (!materials.isEmpty()) {
             actions.add(new CooldownItemCustomAction(target, materials, seconds));
-            plugin.getLogger().info("[VioTrap] Загружен cooldownitem: " + target + ", items: " + materials + ", " + seconds + "s");
         }
     }
 
@@ -89,7 +80,6 @@ public class CustomActionFactory {
         List<String> itemNames = cfg.getStringList("items");
 
         if (itemNames.isEmpty() || !isValidTarget(target)) {
-            plugin.getLogger().warning("Некорректные параметры denyitemuse в " + key + " (скин: " + skin + ")");
             return;
         }
 
@@ -97,7 +87,6 @@ public class CustomActionFactory {
         for (String name : itemNames) {
             Material mat = Material.matchMaterial(name.toUpperCase());
             if (mat != null) materials.add(mat);
-            else plugin.getLogger().warning("Неизвестный материал в denyitemuse: " + name);
         }
 
         if (!materials.isEmpty()) {
@@ -106,7 +95,6 @@ public class CustomActionFactory {
 
             plugin.getServer().getPluginManager().registerEvents(action, plugin);
 
-            plugin.getLogger().info("[VioTrap] Загружен denyitemuse: " + target + ", items: " + materials);
         }
     }
     private static void loadEffectAction(ConfigurationSection actionConfig, String actionKey, String skinName,
@@ -121,14 +109,11 @@ public class CustomActionFactory {
                     int duration = actionConfig.getInt("duration");
 
                     if (!isValidTarget(target)) {
-                        plugin.getLogger().warning("[VioTrap] Некорректный target '" + target + "' для effect в " + actionKey + " (скин: " + skinName + ")");
                         return;
                     }
 
                     actions.add(new EffectCustomAction(target, effectName.toUpperCase(), amplifier, duration));
-                    plugin.getLogger().info("[VioTrap] Загружен effect action: " + target + " " + effectName + " " + amplifier + " " + duration + " (скин: " + skinName + ")");
                 } catch (Exception e) {
-                    plugin.getLogger().warning("[VioTrap] Ошибка парсинга effect (отдельные ключи) в " + actionKey + " (скин: " + skinName + "): " + e.getMessage());
                 }
             } else {
                 // Fallback: старый формат - строка в "effect"
@@ -143,15 +128,12 @@ public class CustomActionFactory {
 
                         if (isValidTarget(target)) {
                             actions.add(new EffectCustomAction(target, effect, amplifier, duration));
-                            plugin.getLogger().info("[VioTrap] Загружен effect action (старая строка): " + effectData + " (скин: " + skinName + ")");
                         }
                     } else {
-                        plugin.getLogger().warning("[VioTrap] Некорректный формат effect (строка) в " + actionKey + ": " + effectData + " (скин: " + skinName + ")");
                     }
                 }
             }
         } else {
-            plugin.getLogger().warning("[VioTrap] Effect не указан для действия " + actionKey + " в скине " + skinName);
         }
     }
 
@@ -166,12 +148,9 @@ public class CustomActionFactory {
 
                 if (isValidTarget(target)) {
                     actions.add(new CommandCustomAction(target, command));
-                    plugin.getLogger().info("[VioTrap] Загружен command action: " + command + " (target: " + target + ") (скин: " + skinName + ")");
                 } else {
-                    plugin.getLogger().warning("[VioTrap] Некорректный target для команды в " + actionKey + ": " + target + " (скин: " + skinName + ")");
                 }
             } else {
-                plugin.getLogger().warning("[VioTrap] Некорректный формат команды в " + actionKey + ": " + commandData + " (скин: " + skinName + ")");
             }
         }
     }
@@ -190,12 +169,9 @@ public class CustomActionFactory {
 
                     if (isValidTarget(target) && location.equalsIgnoreCase("up") && blocks > 0 && minHeight >= 0) {
                         actions.add(new TeleportOutCustomAction(target, blocks, minHeight));
-                        plugin.getLogger().info("[VioTrap] Загружен teleportout action: " + target + " " + blocks + " up (min-height: " + minHeight + ") (скин: " + skinName + ")");
                     } else {
-                        plugin.getLogger().warning("[VioTrap] Некорректные параметры teleportout в " + actionKey + " (скин: " + skinName + ")");
                     }
                 } catch (NumberFormatException e) {
-                    plugin.getLogger().warning("[VioTrap] Некорректный формат числа в teleportout: " + teleportData + " (скин: " + skinName + ")");
                 }
             }
         }
@@ -213,9 +189,7 @@ public class CustomActionFactory {
             try {
                 Particle.valueOf(particleType.toUpperCase());
                 actions.add(new ParticleHitboxCustomAction(target, particleType.toUpperCase(), duration, updateInterval));
-                plugin.getLogger().info("[VioTrap] Загружен particlehitbox action: " + target + " " + particleType + " " + duration + "s (скин: " + skinName + ")");
             } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("[VioTrap] Некорректный тип частиц в " + actionKey + ": " + particleType + " (скин: " + skinName + ")");
             }
         } else {
             // Fallback: старый формат
@@ -232,14 +206,11 @@ public class CustomActionFactory {
                         try {
                             Particle.valueOf(particleType.toUpperCase());
                             actions.add(new ParticleHitboxCustomAction(target, particleType.toUpperCase(), duration, updateInterval));
-                            plugin.getLogger().info("[VioTrap] Загружен particlehitbox (старая строка): " + particleData + " (скин: " + skinName + ")");
                         } catch (IllegalArgumentException e) {
-                            plugin.getLogger().warning("[VioTrap] Некорректный тип частиц (строка): " + particleType + " (скин: " + skinName + ")");
                         }
                     }
                 }
             } else {
-                plugin.getLogger().warning("[VioTrap] Параметры particlehitbox не найдены в " + actionKey + " (скин: " + skinName + ")");
             }
         }
     }

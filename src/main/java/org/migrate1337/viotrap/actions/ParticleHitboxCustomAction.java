@@ -35,7 +35,6 @@ public class ParticleHitboxCustomAction implements CustomAction {
                 this.spawnHitboxParticles(randomPlayer, plugin);
                 break;
             default:
-                plugin.getLogger().warning("Некорректный таргет в ParticleHitboxCustomAction: " + this.target);
         }
 
     }
@@ -46,7 +45,6 @@ public class ParticleHitboxCustomAction implements CustomAction {
             try {
                 particle = Particle.valueOf(this.particleType);
             } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("Некорректный тип частиц в ParticleHitboxCustomAction: " + this.particleType);
                 return;
             }
 

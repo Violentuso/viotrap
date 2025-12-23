@@ -23,11 +23,9 @@ public class EffectCustomAction implements CustomAction {
         try {
             effectType = PotionEffectType.getByName(this.effectName);
             if (effectType == null) {
-                plugin.getLogger().warning("Некорректный эффект: " + this.effectName);
                 return;
             }
         } catch (Exception var11) {
-            plugin.getLogger().warning("Ошибка при получении эффекта: " + this.effectName);
             return;
         }
 
@@ -46,7 +44,6 @@ public class EffectCustomAction implements CustomAction {
                 this.applyEffect(randomPlayer, effectType);
                 break;
             default:
-                plugin.getLogger().warning("Некорректный таргет в EffectCustomAction: " + this.target);
         }
 
     }

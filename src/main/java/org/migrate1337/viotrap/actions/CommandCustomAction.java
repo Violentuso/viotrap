@@ -29,7 +29,6 @@ public class CommandCustomAction implements CustomAction {
                 this.executeCommand(randomPlayer, this.command, plugin);
                 break;
             default:
-                plugin.getLogger().warning("Некорректный таргет в CommandCustomAction: " + this.target);
         }
 
     }
@@ -46,7 +45,6 @@ public class CommandCustomAction implements CustomAction {
             }
 
         } else {
-            plugin.getLogger().warning("Игрок недоступен для выполнения команды: " + command);
         }
     }
 }

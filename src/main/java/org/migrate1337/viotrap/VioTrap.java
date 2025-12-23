@@ -141,7 +141,6 @@ public final class VioTrap extends JavaPlugin implements Listener {
                 this.fireworkUseFlag = (StateFlag)existing;
             }
         } catch (IllegalStateException e) {
-            this.getLogger().warning("Failed to register viotrap flag: " + e.getMessage());
         }
 
     }
@@ -158,8 +157,8 @@ public final class VioTrap extends JavaPlugin implements Listener {
         this.loadPlateConfig();
         this.loadRevealItemConfig();
         this.loadDivineAuraItemConfig();
-        this.trapItemListener = new TrapItemListener(this);
         this.plateItemListener = new PlateItemListener(this);
+        this.trapItemListener = new TrapItemListener(this);
         this.getServer().getPluginManager().registerEvents(this.trapItemListener, this);
         this.getServer().getPluginManager().registerEvents(this.plateItemListener, this);
         this.getServer().getPluginManager().registerEvents(new RevealItemListener(this), this);
@@ -189,25 +188,19 @@ public final class VioTrap extends JavaPlugin implements Listener {
         this.loadTrapConfig();
         this.chatInputHandler = new ChatInputHandler();
         this.tempSkinData = new HashMap();
-        Bukkit.getLogger().info("[VioTrap] Плагин успешно загружен!");
     }
 
     public void onDisable() {
         if (this.trapItemListener != null) {
-            Bukkit.getLogger().info("[VioTrap] Выключение сервера, восстанавливаем блоки...");
             this.trapItemListener.removeAllTraps();
         } else {
-            Bukkit.getLogger().warning("[VioTrap] trapItemListener == null, restoreAllBlocks() не вызван!");
         }
 
         if (this.plateItemListener != null) {
-            Bukkit.getLogger().info("[VioTrap] Выключение сервера, восстанавливаем блоки...");
             this.plateItemListener.removeAllPlates();
         } else {
-            Bukkit.getLogger().warning("[VioTrap] plateItemListener == null, restoreAllBlocks() не вызван!");
         }
 
-        Bukkit.getLogger().info("[VioTrap] Плагин VioTrap успешно отключен.");
     }
 
     public SkinCreationMenu getSkinCreationMenu() {
@@ -220,7 +213,6 @@ public final class VioTrap extends JavaPlugin implements Listener {
             try {
                 this.trapsFile.createNewFile();
             } catch (IOException e) {
-                this.getLogger().severe("Не удалось создать traps.yml!");
                 e.printStackTrace();
             }
         }
@@ -234,7 +226,6 @@ public final class VioTrap extends JavaPlugin implements Listener {
         try {
             this.trapsConfig.save(this.trapsFile);
         } catch (IOException e) {
-            this.getLogger().severe("Не удалось сохранить traps.yml!");
             e.printStackTrace();
         }
 
@@ -246,7 +237,6 @@ public final class VioTrap extends JavaPlugin implements Listener {
             try {
                 this.platesFile.createNewFile();
             } catch (IOException e) {
-                Bukkit.getLogger().severe("Не удалось создать plats.yml!");
                 e.printStackTrace();
             }
         }
@@ -258,7 +248,6 @@ public final class VioTrap extends JavaPlugin implements Listener {
         try {
             this.platesConfig.save(this.platesFile);
         } catch (IOException e) {
-            Bukkit.getLogger().severe("Не удалось сохранить plats.yml!");
             e.printStackTrace();
         }
 
@@ -296,7 +285,6 @@ public final class VioTrap extends JavaPlugin implements Listener {
                 this.trapItemListener.getSkinActions().put(skin, CustomActionFactory.loadActions(skin, this));
             }
         } else {
-            this.getLogger().warning("trapItemListener is null in loadTrapConfig!");
         }
 
     }

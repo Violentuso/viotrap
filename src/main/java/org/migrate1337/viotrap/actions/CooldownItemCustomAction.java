@@ -35,7 +35,6 @@ public class CooldownItemCustomAction implements CustomAction {
                 if (random != null) apply(random);
                 break;
             default:
-                plugin.getLogger().warning("Некорректный target в CooldownItemCustomAction: " + target);
         }
     }
 

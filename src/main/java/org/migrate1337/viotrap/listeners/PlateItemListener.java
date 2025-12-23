@@ -80,7 +80,6 @@ public class PlateItemListener implements Listener {
         this.combatLogXHandler = new CombatLogXHandler();
         this.pvpManagerHandler = new PVPManagerHandle(plugin);
         this.activeSkinsManager = plugin.getActiveSkinsManager();
-        plugin.getLogger().info("[VioTrap] PlateItemListener initialized");
         this.loadPlatesFromConfig();
     }
 
@@ -90,7 +89,6 @@ public class PlateItemListener implements Listener {
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item != null && PlateItem.getUniqueId(item) != null && (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
             if (this.plugin.getConfig().getBoolean("plate.enable-pvp", false)) {
-                this.plugin.getLogger().info("[VioTrap] PVP enabled for plate usage by " + player.getName());
                 if (this.combatLogXHandler.isCombatLogXEnabled()) {
                     this.combatLogXHandler.tagPlayer(player, TagType.DAMAGE, TagReason.ATTACKER);
                     player.sendMessage(this.plugin.getConfig().getString("plate.messages.pvp-enabled", "§cВы использовали пласт и получили режим пвп!"));
@@ -110,37 +108,30 @@ public class PlateItemListener implements Listener {
 
             org.migrate1337.viotrap.listeners.DirectionInfo directionInfo = this.getOffsetsAndSchematic(player, skin);
             String schematic = directionInfo.schematicName;
-            Logger var10000 = this.plugin.getLogger();
             String var10001 = player.getName();
-            var10000.info("[VioTrap] Selected schematic for " + var10001 + ": " + schematic);
+
             if (!this.plugin.getConfig().contains("plate_skins." + skin) && !skin.equals("default")) {
-                this.plugin.getLogger().warning("[VioTrap] Skin " + skin + " not found in configuration for " + player.getName());
                 player.sendMessage("§cСкин не найден в конфигурации.");
             } else if (this.isInBannedRegion(location, location.getWorld().getName())) {
-                var10000 = this.plugin.getLogger();
                 var10001 = player.getName();
-                var10000.info("[VioTrap] Player " + var10001 + " attempted to use plate in banned region at " + String.valueOf(location));
+
                 player.sendMessage("§cВы не можете использовать данный предмет в этом регионе!");
             } else if (this.hasBannedRegionFlags(location, location.getWorld().getName())) {
-                var10000 = this.plugin.getLogger();
                 var10001 = player.getName();
-                var10000.info("[VioTrap] Player " + var10001 + " attempted to use plate in region with banned flags at " + String.valueOf(location));
+
                 player.sendMessage("§cВы не можете использовать данный предмет в этом регионе!");
             } else if (player.hasCooldown(item.getType())) {
-                var10000 = this.plugin.getLogger();
                 var10001 = player.getName();
-                var10000.info("[VioTrap] Player " + var10001 + " is on cooldown for " + String.valueOf(item.getType()));
+
                 player.sendMessage(this.plugin.getConfig().getString("plate.messages.cooldown_message", "§cПодождите перед использованием снова!"));
             } else if (this.isRegionNearby(location, player.getWorld().getName())) {
-                var10000 = this.plugin.getLogger();
                 var10001 = player.getName();
-                var10000.info("[VioTrap] Player " + var10001 + " attempted to use plate near existing plate/trap at " + String.valueOf(location));
+
                 player.sendMessage(this.plugin.getConfig().getString("plate.messages.already_nearby", "Рядом уже установлен активный пласт или трапка!"));
             } else {
                 String sound = skin.equals("default") ? this.plugin.getConfig().getString("plate.sound.type", "BLOCK_ANVIL_PLACE") : this.plugin.getConfig().getString("plate_skins." + skin + ".sound.type", "BLOCK_ANVIL_PLACE");
                 float soundVolume = skin.equals("default") ? (float)this.plugin.getConfig().getDouble("plate.sound.volume", (double)10.0F) : (float)this.plugin.getConfig().getDouble("plate_skins." + skin + ".sound.volume", (double)1.0F);
                 float soundPitch = skin.equals("default") ? (float)this.plugin.getConfig().getDouble("plate.sound.pitch", (double)1.0F) : (float)this.plugin.getConfig().getDouble("plate_skins." + skin + ".sound.pitch", (double)1.0F);
-                this.plugin.getLogger().info("[VioTrap] Playing sound " + sound + " for " + player.getName() + " at volume " + soundVolume + ", pitch " + soundPitch);
                 Map<Location, TrapBlockData> replaced = (Map)this.playerReplacedBlocks.get(player.getUniqueId());
                 int durationTicks = (skin.equals("default") ? this.plugin.getConfig().getInt("plate.duration", 5) : this.plugin.getConfig().getInt("plate_skins." + skin + ".duration", 5)) * 20;
                 if (replaced != null) {
@@ -152,7 +143,6 @@ public class PlateItemListener implements Listener {
                 try {
                     player.playSound(location, Sound.valueOf(sound), soundVolume, soundPitch);
                 } catch (IllegalArgumentException var24) {
-                    this.plugin.getLogger().warning("[VioTrap] Invalid sound type " + sound + " for skin " + skin);
                     player.sendMessage("§cОшибка: некорректный звук в конфигурации скина.");
                     return;
                 }
@@ -163,9 +153,7 @@ public class PlateItemListener implements Listener {
 
                 try {
                     File schematicFile = new File("plugins/WorldEdit/schematics/" + directionInfo.schematicName);
-                    this.plugin.getLogger().info("[VioTrap] Loading schematic: " + schematicFile.getAbsolutePath());
                     if (!schematicFile.exists()) {
-                        this.plugin.getLogger().warning("[VioTrap] Schematic file does not exist: " + schematicFile.getAbsolutePath());
                         player.sendMessage(this.plugin.getConfig().getString("plate.messages.placement_failed", "Не удалось загрузить пласт!"));
                         return;
                     }
@@ -174,9 +162,7 @@ public class PlateItemListener implements Listener {
                     try (ClipboardReader reader = ClipboardFormats.findByFile(schematicFile).getReader(new FileInputStream(schematicFile))) {
                         clipboard = reader.read();
                     } catch (Exception e) {
-                        var10000 = this.plugin.getLogger();
                         var10001 = schematicFile.getAbsolutePath();
-                        var10000.warning("[VioTrap] Failed to load schematic " + var10001 + ": " + e.getMessage());
                         player.sendMessage(this.plugin.getConfig().getString("plate.messages.placement_failed", "Не удалось загрузить пласт!"));
                         return;
                     }
@@ -191,7 +177,6 @@ public class PlateItemListener implements Listener {
                     int pos2Y = maxPoint.getBlockY() - origin.getBlockY();
                     int pos2Z = maxPoint.getBlockZ() - origin.getBlockZ();
 
-                    this.plugin.getLogger().info("[VioTrap] Computed region offsets: pos1=(" + pos1X + "," + pos1Y + "," + pos1Z + "), pos2=(" + pos2X + "," + pos2Y + "," + pos2Z + ")");
                     try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(player.getWorld()))) {
                         BlockVector3 pastePosition = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
                         ClipboardHolder holder = new ClipboardHolder(clipboard);
@@ -205,9 +190,8 @@ public class PlateItemListener implements Listener {
                                 this.activeSkinsManager.setActivePlateSkin(player.getUniqueId(), "default");
                             }
                         }
-                        var10000 = this.plugin.getLogger();
                         var10001 = player.getName();
-                        var10000.info("[VioTrap] Pasted schematic for " + var10001 + " at " + String.valueOf(location));
+
                         this.saveReplacedBlocks(player.getUniqueId(), location, clipboard);
                         this.createPlateRegion(player, location, pos1X, pos1Y, pos1Z, pos2X, pos2Y, pos2Z);
                         player.sendMessage(this.plugin.getConfig().getString("plate.messages.success_used", "§aВы успешно использовали предмет."));
@@ -218,9 +202,8 @@ public class PlateItemListener implements Listener {
                         String finalSkin = skin;
                         Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
                             this.activePlateTimers.remove(plateId);
-                            Logger var10002 = this.plugin.getLogger();
                             String var10003 = player.getName();
-                            var10002.info("[VioTrap] Restoring blocks for " + var10003 + " at " + String.valueOf(location));
+
                             this.restoreBlocks(player.getUniqueId());
                             this.removePlateRegion(player, location);
                             this.removePlateFromFile(location);
@@ -231,15 +214,12 @@ public class PlateItemListener implements Listener {
                             try {
                                 player.playSound(location, Sound.valueOf(soundEnded), soundVolumeEnded, soundPitchEnded);
                             } catch (IllegalArgumentException var9) {
-                                this.plugin.getLogger().warning("[VioTrap] Invalid end sound type " + soundEnded + " for skin " + finalSkin);
                             }
 
                         }, (long)durationTicks);
                     }
                 } catch (Exception e) {
-                    var10000 = this.plugin.getLogger();
                     var10001 = player.getName();
-                    var10000.warning("[VioTrap] Failed to place plate for " + var10001 + ": " + e.getMessage());
                     e.printStackTrace();
                     player.sendMessage(this.plugin.getConfig().getString("plate.messages.placement_failed", "Не удалось загрузить пласт!"));
                 }
@@ -277,21 +257,18 @@ public class PlateItemListener implements Listener {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
         if (regionManager == null) {
-            this.plugin.getLogger().info("[VioTrap] No region manager for world " + worldName);
             return false;
         } else if (this.plugin.getConfig().getBoolean("plate.disabled_all_regions", false)) {
             boolean inRegion = regionManager.getApplicableRegions(BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ())).getRegions().stream().anyMatch((region) -> !"__default__".equals(region.getId()));
-            Logger var9 = this.plugin.getLogger();
             String var10 = String.valueOf(location);
-            var9.info("[VioTrap] Checking banned regions (disabled_all_regions=true) at " + var10 + ": " + inRegion);
+
             return inRegion;
         } else {
             List<String> bannedRegions = this.plugin.getConfig().getStringList("plate.banned_regions");
             BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
             boolean inBannedRegion = regionManager.getApplicableRegions(vector).getRegions().stream().anyMatch((region) -> bannedRegions.contains(region.getId()));
-            Logger var10000 = this.plugin.getLogger();
             String var10001 = String.valueOf(bannedRegions);
-            var10000.info("[VioTrap] Checking banned regions " + var10001 + " at " + String.valueOf(location) + ": " + inBannedRegion);
+
             return inBannedRegion;
         }
     }
@@ -300,12 +277,10 @@ public class PlateItemListener implements Listener {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
         if (regionManager == null) {
-            this.plugin.getLogger().info("[VioTrap] No region manager for world " + worldName);
             return false;
         } else {
             ConfigurationSection bannedFlagsSection = this.plugin.getConfig().getConfigurationSection("plate.banned_region_flags");
             if (bannedFlagsSection == null) {
-                this.plugin.getLogger().info("[VioTrap] No banned region flags configured");
                 return false;
             } else {
                 BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
@@ -314,22 +289,18 @@ public class PlateItemListener implements Listener {
                     for(String flagName : bannedFlagsSection.getKeys(false)) {
                         StateFlag flag = (StateFlag)Flags.fuzzyMatchFlag(WorldGuard.getInstance().getFlagRegistry(), flagName);
                         if (flag == null) {
-                            this.plugin.getLogger().warning("[VioTrap] Invalid flag " + flagName + " in banned_region_flags");
                         } else if (region.getFlag(flag) != null) {
-                            this.plugin.getLogger().info("[VioTrap] Found banned flag " + flagName + " in region " + region.getId() + " at " + String.valueOf(location));
                             return true;
                         }
                     }
                 }
 
-                this.plugin.getLogger().info("[VioTrap] No banned flags found at " + String.valueOf(location));
                 return false;
             }
         }
     }
 
     public void removeAllPlates() {
-        this.plugin.getLogger().info("[VioTrap] Removing all plates");
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
 
         for(World world : Bukkit.getWorlds()) {
@@ -338,7 +309,6 @@ public class PlateItemListener implements Listener {
                 for(String regionName : regionManager.getRegions().keySet()) {
                     if (regionName.endsWith("plate_")) {
                         regionManager.removeRegion(regionName);
-                        this.plugin.getLogger().info("[VioTrap] Removed region " + regionName);
                     }
                 }
             }
@@ -346,23 +316,20 @@ public class PlateItemListener implements Listener {
 
         this.restoreAllBlocks();
         this.activePlates.clear();
-        this.plugin.getLogger().info("[VioTrap] All plates removed");
     }
 
     private boolean isRegionNearby(Location location, String worldName) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
         if (regionManager == null) {
-            this.plugin.getLogger().info("[VioTrap] No region manager for world " + worldName);
             return false;
         } else {
             BlockVector3 min = BlockVector3.at(location.getBlockX() - 3, location.getBlockY() - 3, location.getBlockZ() - 3);
             BlockVector3 max = BlockVector3.at(location.getBlockX() + 3, location.getBlockY() + 3, location.getBlockZ() + 3);
             ProtectedCuboidRegion checkRegion = new ProtectedCuboidRegion("checkRegion", min, max);
             boolean nearby = regionManager.getApplicableRegions(checkRegion).getRegions().stream().anyMatch((region) -> region.getId().endsWith("_trap") || region.getId().startsWith("plate_"));
-            Logger var10000 = this.plugin.getLogger();
             String var10001 = String.valueOf(location);
-            var10000.info("[VioTrap] Checking nearby regions at " + var10001 + ": " + nearby);
+
             return nearby;
         }
     }
@@ -422,9 +389,7 @@ public class PlateItemListener implements Listener {
         if (regionManager != null) {
             regionManager.addRegion(region);
             this.activePlates.put(regionName, region);
-            this.plugin.getLogger().info("[VioTrap] Created region " + regionName + " at " + String.valueOf(location) + ", bounds: min=(" + (location.getBlockX() + pos1X) + "," + (location.getBlockY() + pos1Y) + "," + (location.getBlockZ() + pos1Z) + "), max=(" + (location.getBlockX() + pos2X) + "," + (location.getBlockY() + pos2Y) + "," + (location.getBlockZ() + pos2Z) + ")");
         } else {
-            this.plugin.getLogger().warning("[VioTrap] Failed to create region " + regionName + ": no region manager for world " + location.getWorld().getName());
         }
 
         ConfigurationSection flagsSection = this.plugin.getConfig().getConfigurationSection("plate.flags");
@@ -436,10 +401,8 @@ public class PlateItemListener implements Listener {
                         String value = flagsSection.getString(flagName);
                         StateFlag.State state = State.valueOf(value.toUpperCase());
                         region.setFlag(flag, state);
-                        this.plugin.getLogger().info("[VioTrap] Set flag " + flagName + "=" + String.valueOf(state) + " for region " + regionName);
                     }
                 } catch (IllegalArgumentException e) {
-                    this.plugin.getLogger().warning("[VioTrap] Invalid flag value for " + flagName + ": " + e.getMessage());
                     player.sendMessage("§cНекорректное значение для флага " + flagName + " в конфиге.");
                 }
             }
@@ -454,17 +417,13 @@ public class PlateItemListener implements Listener {
         if (regionManager != null) {
             regionManager.removeRegion(regionName);
             this.activePlates.remove(regionName);
-            this.plugin.getLogger().info("[VioTrap] Removed region " + regionName + " at " + String.valueOf(location));
         } else {
-            this.plugin.getLogger().warning("[VioTrap] Failed to remove region " + regionName + ": no region manager for world " + location.getWorld().getName());
         }
 
     }
 
     public void restoreAllBlocks() {
-        this.plugin.getLogger().info("[VioTrap] Restoring all blocks");
         if (this.playerReplacedBlocks.isEmpty()) {
-            this.plugin.getLogger().info("[VioTrap] playerReplacedBlocks is empty, loading from config");
             this.loadPlatesFromConfig();
         }
 
@@ -472,13 +431,11 @@ public class PlateItemListener implements Listener {
             this.restoreBlocks(playerId);
         }
 
-        this.plugin.getLogger().info("[VioTrap] All blocks restored");
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         UUID playerId = event.getPlayer().getUniqueId();
-        this.plugin.getLogger().info("[VioTrap] Player " + event.getPlayer().getName() + " quit, restoring blocks");
         this.restoreBlocks(playerId);
         this.playerReplacedBlocks.remove(playerId);
     }
@@ -550,13 +507,11 @@ public class PlateItemListener implements Listener {
         }
 
         this.playerReplacedBlocks.put(playerId, replacedBlocks);
-        this.plugin.getLogger().info("[VioTrap] Сохранено " + replacedBlocks.size() + " реально изменённых блоков для " + playerId);
     }
 
     private void restoreBlocks(UUID playerId) {
         Map<Location, TrapBlockData> replacedBlocks = this.playerReplacedBlocks.get(playerId);
         if (replacedBlocks == null || replacedBlocks.isEmpty()) {
-            this.plugin.getLogger().info("[VioTrap] Нет блоков для восстановления у " + playerId);
             return;
         }
 
@@ -623,13 +578,10 @@ public class PlateItemListener implements Listener {
         }
 
         this.playerReplacedBlocks.remove(playerId);
-        this.plugin.getLogger().info("[VioTrap] Восстановлено только " + restoredCount + " изменённых блоков для " + playerId + " (остальные остались как есть)");
     }
 
     private void loadPlatesFromConfig() {
-        this.plugin.getLogger().info("[VioTrap] Loading plates from plats.yml");
         if (!this.plugin.getPlatesConfig().contains("plates")) {
-            this.plugin.getLogger().info("[VioTrap] No plates found in plats.yml");
         } else {
             ConfigurationSection platesSection = this.plugin.getPlatesConfig().getConfigurationSection("plates");
 
@@ -651,9 +603,8 @@ public class PlateItemListener implements Listener {
                             TrapBlockData blockData = new TrapBlockData(block.getType(), block.getBlockData(), (ItemStack[])null, (String)null);
                             this.playerReplacedBlocks.putIfAbsent(playerId, new HashMap());
                             ((Map)this.playerReplacedBlocks.get(playerId)).put(location, blockData);
-                            Logger var10000 = this.plugin.getLogger();
                             String var10001 = String.valueOf(location);
-                            var10000.info("[VioTrap] Loaded plate at " + var10001 + " for player " + String.valueOf(playerId));
+
                             long currentTime = System.currentTimeMillis();
                             long remainingMillis = endTime - currentTime;
                             if (remainingMillis > 0L) {
@@ -682,7 +633,6 @@ public class PlateItemListener implements Listener {
                 }
             }
 
-            this.plugin.getLogger().info("[VioTrap] Loaded " + this.playerReplacedBlocks.size() + " active plates");
         }
     }
 
@@ -697,9 +647,8 @@ public class PlateItemListener implements Listener {
         this.plugin.getPlatesConfig().set(path + ".skin", skin);
         this.plugin.getPlatesConfig().set(path + ".endTime", System.currentTimeMillis() + durationSeconds * 1000L);
         this.plugin.savePlatesConfig();
-        Logger var7 = this.plugin.getLogger();
         String var10001 = String.valueOf(location);
-        var7.info("[VioTrap] Saved plate to config at " + var10001 + " for " + player.getName() + " with skin " + skin);
+
     }
 
     private void removePlateFromFile(Location location) {
@@ -707,6 +656,5 @@ public class PlateItemListener implements Listener {
         String path = "plates." + var10000 + "." + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
         this.plugin.getPlatesConfig().set(path, (Object)null);
         this.plugin.savePlatesConfig();
-        this.plugin.getLogger().info("[VioTrap] Removed plate from config at " + String.valueOf(location));
     }
 }

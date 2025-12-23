@@ -40,11 +40,9 @@ public class TeleportOutCustomAction implements CustomAction {
                 if (randomPlayer != null && randomPlayer.isOnline()) {
                     this.teleportPlayer(randomPlayer, randomPlayer.getLocation(), plugin);
                 } else {
-                    plugin.getLogger().warning("Не удалось выбрать случайного игрока для телепортации.");
                 }
                 break;
             default:
-                plugin.getLogger().warning("Некорректный таргет в TeleportOutCustomAction: " + this.target);
         }
 
     }
@@ -53,28 +51,23 @@ public class TeleportOutCustomAction implements CustomAction {
         Location currentLocation = player.getLocation();
         World world = currentLocation.getWorld();
         if (world == null) {
-            plugin.getLogger().warning("Мир не найден для игрока " + player.getName());
         } else {
             double targetY = currentLocation.getY() + (double)this.blocks;
             Location targetLocation = new Location(world, currentLocation.getX(), targetY, currentLocation.getZ(), currentLocation.getYaw(), currentLocation.getPitch());
             if (this.isSafeLocation(targetLocation)) {
-                Logger var11 = plugin.getLogger();
                 String var13 = player.getName();
-                var11.info("Телепортация " + var13 + " на целевую высоту: y=" + targetY);
+
                 player.teleport(targetLocation);
                 player.playSound(targetLocation, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0F, 1.0F);
             } else {
                 Location safeLocation = this.findSafeLocationAbove(currentLocation, plugin);
                 if (safeLocation != null) {
-                    Logger var10000 = plugin.getLogger();
                     String var10001 = player.getName();
-                    var10000.info("Телепортация " + var10001 + " на безопасную высоту: y=" + safeLocation.getY());
+
                     player.teleport(safeLocation);
                     player.playSound(safeLocation, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0F, 1.0F);
                 } else {
-                    Logger var10 = plugin.getLogger();
                     String var12 = player.getName();
-                    var10.warning("Не удалось найти безопасное место для телепортации игрока " + var12 + " на высоте y + " + this.minHeight + " или выше");
                     player.sendMessage("§cНе удалось телепортироваться: нет безопасного места!");
                 }
 

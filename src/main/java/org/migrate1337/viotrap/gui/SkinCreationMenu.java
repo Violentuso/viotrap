@@ -810,7 +810,6 @@ public class SkinCreationMenu implements Listener {
                                     this.plugin.getConfig().set(basePath + ".amplifier", Integer.parseInt(parts[3]));
                                     this.plugin.getConfig().set(basePath + ".duration", Integer.parseInt(parts[4]));
                                 } catch (NumberFormatException e) {
-                                    this.plugin.getLogger().warning("Ошибка числа в эффекте: " + actionKey);
                                 }
                             }
                             break;

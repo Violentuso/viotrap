@@ -20,25 +20,24 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.migrate1337.viotrap.VioTrap;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class DenyItemUseCustomAction implements CustomAction, Listener {
     private static final Map<UUID, Set<Material>> trapDeniedItems = new HashMap<>();
 
     private final String target;
     private final Set<Material> items;
+    private static Set<Material> configuredDeniedItems = Collections.emptySet();
 
     public DenyItemUseCustomAction(String target, Set<Material> items) {
         this.target = target.toLowerCase();
         this.items = new HashSet<>(items);
+        setConfiguredDeniedItems(this.items);
     }
 
-    // Вставьте этот метод в DenyItemUseCustomAction.java
-
+    public static void setConfiguredDeniedItems(Set<Material> deniedItems) {
+        DenyItemUseCustomAction.configuredDeniedItems = Collections.unmodifiableSet(new HashSet<>(deniedItems));
+    }
     @Override
     public void execute(Player player, Player[] opponents, VioTrap plugin) {
         switch (target) {
@@ -56,39 +55,41 @@ public class DenyItemUseCustomAction implements CustomAction, Listener {
                 if (random != null) apply(random, plugin);
                 break;
             default:
-                plugin.getLogger().warning("[VioTrap] Некорректный target в DenyItemUseCustomAction: " + target);
         }
     }
 
-    // И добавьте приватный метод apply, который выполняет основное действие
+    public static void applyForPlayer(UUID uuid) {
+        Player player = Bukkit.getPlayer(uuid);
+
+        if (player != null && !configuredDeniedItems.isEmpty()) { //
+
+            if (!trapDeniedItems.containsKey(uuid)) { //
+
+
+                trapDeniedItems.put(uuid, configuredDeniedItems);
+            }
+        }
+    }
     private void apply(Player p, VioTrap plugin) {
         if (p == null || !p.isOnline()) return;
 
         Set<Material> playerDenied = trapDeniedItems.getOrDefault(p.getUniqueId(), new HashSet<>());
 
-        // --- Логирование (для проверки срабатывания) ---
-        plugin.getLogger().info("[DenyItemUse] Executing 'denyitemuse' for player " + p.getName() + ". Items to deny: " + items);
 
         playerDenied.addAll(items);
         trapDeniedItems.put(p.getUniqueId(), playerDenied);
 
-        plugin.getLogger().info("[DenyItemUse] Player " + p.getName() + " now has " + playerDenied.size() + " denied items. Target: " + target);
     }
 
     // В DenyItemUseCustomAction.java
     public static void clearForPlayer(UUID uuid) {
         if (trapDeniedItems.containsKey(uuid)) {
-            Bukkit.getLogger().info("[DenyItemUse] Clearing items for UUID: " + uuid + ". Denied count: " + trapDeniedItems.get(uuid).size());
 
             trapDeniedItems.remove(uuid);
 
-            // Проверка удаления
-            Bukkit.getLogger().info("[DenyItemUse] Clear successful. Contains key after removal: " + trapDeniedItems.containsKey(uuid));
         } else {
-            Bukkit.getLogger().info("[DenyItemUse] Attempted to clear items for UUID: " + uuid + ", but player was not in map.");
         }
     }
-    // Добавьте сброс анимации + удалите лишнюю проверку региона
 
     // Метод onConsume (для Золотого Яблока)
     @EventHandler(ignoreCancelled = true)
@@ -103,7 +104,6 @@ public class DenyItemUseCustomAction implements CustomAction, Listener {
         if (denied.contains(itemType)) {
             e.setCancelled(true);
 
-            // !!! КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: СБРОС АНИМАЦИИ ЕДЫ !!!
             if (player.getInventory().getItemInMainHand().getType() == itemType) {
                 player.getInventory().setItemInMainHand(player.getInventory().getItemInMainHand());
             } else if (player.getInventory().getItemInOffHand().getType() == itemType) {
@@ -151,9 +151,7 @@ public class DenyItemUseCustomAction implements CustomAction, Listener {
 
         if (denied.contains(itemType)) {
             e.setCancelled(true);
-            player.sendMessage("§cНельзя использовать этот предмет в ловушке!");
 
-            // Дополнительная отмена для надежности
             e.setUseItemInHand(Event.Result.DENY);
             e.setUseInteractedBlock(Event.Result.DENY);
         }
@@ -186,7 +184,6 @@ public class DenyItemUseCustomAction implements CustomAction, Listener {
 
                 if (denied.contains(Material.SPLASH_POTION) || denied.contains(Material.LINGERING_POTION)) {
                     e.setCancelled(true);
-                    player.sendMessage("§cНельзя использовать зелья в ловушке!");
                     return;
                 }
             }
@@ -194,11 +191,11 @@ public class DenyItemUseCustomAction implements CustomAction, Listener {
 
         if (launchItem != null && denied.contains(launchItem)) {
             e.setCancelled(true);
-            player.sendMessage("§cНельзя использовать этот предмет в ловушке!");
         }
     }
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent e) {
         trapDeniedItems.remove(e.getPlayer().getUniqueId());
     }
+
 }

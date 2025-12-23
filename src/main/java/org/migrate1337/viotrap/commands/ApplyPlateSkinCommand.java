@@ -47,7 +47,6 @@ public class ApplyPlateSkinCommand implements CommandExecutor {
                         return true;
                     } else {
                         int requiredPoints = this.plugin.getConfig().getInt("plate_skins." + skinOrAll + ".points", 0);
-                        this.plugin.getLogger().info("[VioTrap] Applying plate skin " + skinOrAll + " for " + target.getName() + ", required points: " + requiredPoints);
                         if (requiredPoints > 0 && this.pointsManager.getPoints(target.getUniqueId(), skinOrAll) < requiredPoints) {
                             String var15 = String.valueOf(ChatColor.RED);
                             sender.sendMessage(var15 + "У игрока недостаточно очков для скина '" + skinOrAll + "'.");
@@ -56,9 +55,7 @@ public class ApplyPlateSkinCommand implements CommandExecutor {
                             this.activeSkinsManager.setActivePlateSkin(target.getUniqueId(), skinOrAll);
                             if (requiredPoints > 0) {
                                 this.pointsManager.removePoints(target.getUniqueId(), skinOrAll, requiredPoints);
-                                this.plugin.getLogger().info("[VioTrap] Removed " + requiredPoints + " points for plate skin " + skinOrAll + " from " + target.getName());
                             } else {
-                                this.plugin.getLogger().info("[VioTrap] No points required for plate skin " + skinOrAll);
                             }
 
                             String var13 = String.valueOf(ChatColor.GREEN);
@@ -74,12 +71,10 @@ public class ApplyPlateSkinCommand implements CommandExecutor {
                     for(String skin : this.plugin.getPlateSkinNames()) {
                         int requiredPoints = this.plugin.getConfig().getInt("plate_skins." + skin + ".points", 0);
                         if (requiredPoints > 0 && this.pointsManager.getPoints(target.getUniqueId(), skin) < requiredPoints) {
-                            this.plugin.getLogger().info("[VioTrap] Skipped plate skin " + skin + " for " + target.getName() + ": insufficient points (" + this.pointsManager.getPoints(target.getUniqueId(), skin) + "/" + requiredPoints + ")");
                         } else {
                             this.activeSkinsManager.setActivePlateSkin(target.getUniqueId(), skin);
                             if (requiredPoints > 0) {
                                 this.pointsManager.removePoints(target.getUniqueId(), skin, requiredPoints);
-                                this.plugin.getLogger().info("[VioTrap] Removed " + requiredPoints + " points for plate skin " + skin + " from " + target.getName());
                             }
 
                             ++appliedCount;

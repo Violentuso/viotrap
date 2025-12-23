@@ -26,7 +26,6 @@ public class SkinPointsManager {
             try {
                 this.pointsFile.createNewFile();
             } catch (IOException e) {
-                this.plugin.getLogger().severe("Не удалось создать skin_points.yml: " + e.getMessage());
             }
         }
 
@@ -60,17 +59,14 @@ public class SkinPointsManager {
         Map<String, Integer> skinPoints = (Map)this.pointsCache.computeIfAbsent(playerUUID, (k) -> new HashMap());
         int currentPoints = (Integer)skinPoints.getOrDefault(skin, 0);
         if (currentPoints < amount) {
-            this.plugin.getLogger().info("Недостаточно поинтов для удаления: " + currentPoints + " < " + amount + " для игрока " + String.valueOf(playerUUID) + ", скин " + skin);
         } else {
             int newPoints = currentPoints - amount;
             if (newPoints <= 0) {
                 skinPoints.remove(skin);
                 this.pointsConfig.set(playerUUID.toString() + "." + skin, (Object)null);
-                this.plugin.getLogger().info("Удалена запись для скина " + skin + " игрока " + String.valueOf(playerUUID) + ", поинты: " + newPoints);
             } else {
                 skinPoints.put(skin, newPoints);
                 this.pointsConfig.set(playerUUID.toString() + "." + skin, newPoints);
-                this.plugin.getLogger().info("Обновлено поинтов для скина " + skin + " игрока " + String.valueOf(playerUUID) + ": " + newPoints);
             }
 
             this.saveConfig();
@@ -84,9 +80,7 @@ public class SkinPointsManager {
     private void saveConfig() {
         try {
             this.pointsConfig.save(this.pointsFile);
-            this.plugin.getLogger().info("Конфигурация skin_points.yml успешно сохранена");
         } catch (IOException e) {
-            this.plugin.getLogger().severe("Не удалось сохранить skin_points.yml: " + e.getMessage());
         }
 
     }

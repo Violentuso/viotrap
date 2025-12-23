@@ -71,7 +71,6 @@ public class DisorientItemListener implements Listener {
                                 }
 
                                 if (Bukkit.getPluginManager().isPluginEnabled("PvPManager")) {
-                                    Bukkit.getLogger().info("truetrueutre");
                                     this.pvpManagerHandler.tagPlayerForPvP(nearbyPlayer, "disorient_item");
                                     nearbyPlayer.sendMessage(this.plugin.getConfig().getString("disorient_item.messages.pvp-enabled-for-player"));
                                 }
