@@ -1,9 +1,8 @@
 package org.migrate1337.viotrap.actions;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
+
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
@@ -48,7 +47,13 @@ public class CustomActionFactory {
                 case "particlehitbox":
                     loadParticleHitboxAction(actionConfig, actionKey, skinName, actions, plugin);
                     break;
-                default:
+                case "cooldownitem":
+                    loadCooldownItemAction(actionConfig, actionKey, skinName, actions, plugin);
+                    break;
+                case "denyitemuse":
+                    loadDenyItemUseAction(actionConfig, actionKey, skinName, actions, plugin);
+                break;
+                    default:
                     plugin.getLogger().warning("[VioTrap] Неизвестный тип действия '" + type + "' для: " + actionKey + " в скине " + skinName);
             }
         }
@@ -56,10 +61,56 @@ public class CustomActionFactory {
         plugin.getLogger().info("[VioTrap] Загружено " + actions.size() + " actions для скина: " + skinName);
         return actions;
     }
+    private static void loadCooldownItemAction(ConfigurationSection cfg, String key, String skin, List<CustomAction> actions, VioTrap plugin) {
+        String target = cfg.getString("target", "p");
+        List<String> itemNames = cfg.getStringList("items");
+        int seconds = cfg.getInt("seconds", 30);
 
+        if (itemNames.isEmpty() || seconds <= 0 || !isValidTarget(target)) {
+            plugin.getLogger().warning("Некорректные параметры cooldownitem в " + key + " (скин: " + skin + ")");
+            return;
+        }
+
+        Set<Material> materials = new HashSet<>();
+        for (String name : itemNames) {
+            Material mat = Material.matchMaterial(name.toUpperCase());
+            if (mat != null) materials.add(mat);
+            else plugin.getLogger().warning("Неизвестный материал в cooldownitem: " + name);
+        }
+
+        if (!materials.isEmpty()) {
+            actions.add(new CooldownItemCustomAction(target, materials, seconds));
+            plugin.getLogger().info("[VioTrap] Загружен cooldownitem: " + target + ", items: " + materials + ", " + seconds + "s");
+        }
+    }
+
+    private static void loadDenyItemUseAction(ConfigurationSection cfg, String key, String skin, List<CustomAction> actions, VioTrap plugin) {
+        String target = cfg.getString("target", "p");
+        List<String> itemNames = cfg.getStringList("items");
+
+        if (itemNames.isEmpty() || !isValidTarget(target)) {
+            plugin.getLogger().warning("Некорректные параметры denyitemuse в " + key + " (скин: " + skin + ")");
+            return;
+        }
+
+        Set<Material> materials = new HashSet<>();
+        for (String name : itemNames) {
+            Material mat = Material.matchMaterial(name.toUpperCase());
+            if (mat != null) materials.add(mat);
+            else plugin.getLogger().warning("Неизвестный материал в denyitemuse: " + name);
+        }
+
+        if (!materials.isEmpty()) {
+            DenyItemUseCustomAction action = new DenyItemUseCustomAction(target, materials);
+            actions.add(action);
+
+            plugin.getServer().getPluginManager().registerEvents(action, plugin);
+
+            plugin.getLogger().info("[VioTrap] Загружен denyitemuse: " + target + ", items: " + materials);
+        }
+    }
     private static void loadEffectAction(ConfigurationSection actionConfig, String actionKey, String skinName,
                                          List<CustomAction> actions, VioTrap plugin) {
-        // Новый формат: отдельные ключи (target, effect, amplifier, duration)
         String target = actionConfig.getString("target", "p");
         String effectName = actionConfig.getString("effect");
 

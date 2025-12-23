@@ -66,6 +66,7 @@ import org.bukkit.scheduler.BukkitScheduler;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.actions.CustomAction;
 import org.migrate1337.viotrap.actions.CustomActionFactory;
+import org.migrate1337.viotrap.actions.DenyItemUseCustomAction;
 import org.migrate1337.viotrap.items.PlateItem;
 import org.migrate1337.viotrap.items.TrapItem;
 import org.migrate1337.viotrap.utils.ActiveSkinsManager;
@@ -87,6 +88,7 @@ public class TrapItemListener implements Listener {
     private final ActiveSkinsManager activeSkinsManager;
     private final Map<String, TrapData> activeTrapTimers = new HashMap<>();
     private final Map<UUID, Map<String, Long>> playerCooldowns = new HashMap<>();
+
 
     public TrapItemListener(VioTrap plugin) {
         this.plugin = plugin;
@@ -230,11 +232,7 @@ public class TrapItemListener implements Listener {
                                                         float soundVolumeEnded = (float)(finalSkin.equals("default") ? (double)this.plugin.getTrapSoundVolumeEnded() : this.plugin.getConfig().getDouble("skins." + finalSkin + ".sound.volume-ended", (double)this.plugin.getTrapSoundVolumeEnded()));
                                                         float soundPitchEnded = (float)(finalSkin.equals("default") ? (double)this.plugin.getTrapSoundPitchEnded() : this.plugin.getConfig().getDouble("skins." + finalSkin + ".sound.pitch-ended", (double)this.plugin.getTrapSoundPitchEnded()));
 
-
-
-                                                        this.setCooldownActive(player.getUniqueId(), finalSkin, cooldownSeconds * 1000L);
-
-                                                        player.setCooldown(item.getType(), cooldownSeconds * 20);
+                                                        DenyItemUseCustomAction.clearForPlayer(player.getUniqueId());
                                                         location.getWorld().playSound(location, Sound.valueOf(soundTypeEnded), soundVolumeEnded, soundPitchEnded);
                                                     } else {
                                                         this.plugin.getLogger().warning("[VioTrap] Трапка " + trapId + " не найдена в activeTrapTimers при истечении времени");
@@ -314,20 +312,40 @@ public class TrapItemListener implements Listener {
                 .put(skin, System.currentTimeMillis() + durationMs);
         plugin.getLogger().info("[VioTrap] Установлен кулдаун для " + skin + ": " + (durationMs / 1000) + "с");
     }
+    // Файл: TrapItemListener.java
+
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
-        if (event.getFrom().getBlockX() != event.getTo().getBlockX() || event.getFrom().getBlockY() != event.getTo().getBlockY() || event.getFrom().getBlockZ() != event.getTo().getBlockZ()) {
-            Location location = event.getTo();
-            boolean wasInTrapRegion = this.playersInTrapRegions.contains(player.getUniqueId());
-            boolean isNowInTrapRegion = this.isInAnyTrapRegion(location);
-            if (!wasInTrapRegion && isNowInTrapRegion) {
-                this.playersInTrapRegions.add(player.getUniqueId());
-                this.enablePvpForPlayer(player);
-            } else if (wasInTrapRegion && !isNowInTrapRegion) {
-                this.playersInTrapRegions.remove(player.getUniqueId());
-            }
+        Location from = event.getFrom();
+        Location to = event.getTo();
 
+        // Оптимизация: если не сменился блок — пропускаем дальнейшие проверки
+        if (from.getBlockX() == to.getBlockX() &&
+                from.getBlockY() == to.getBlockY() &&
+                from.getBlockZ() == to.getBlockZ()) {
+            return;
+        }
+
+        boolean wasInTrap = this.playersInTrapRegions.contains(player.getUniqueId()); // Используем playersInTrapRegions для надежности
+        boolean isInTrapNow = isInAnyTrapRegion(to); // Проверка нахождения в регионе WorldGuard
+
+        // Логика ВХОДА
+        if (!wasInTrap && isInTrapNow) {
+            this.playersInTrapRegions.add(player.getUniqueId());
+            this.enablePvpForPlayer(player);
+
+        } else if (wasInTrap && !isInTrapNow) {
+
+            // 1. Снятие действия
+            player.sendMessage("§7Запреты на предметы сняты (вы вышли из ловушки)");
+            this.plugin.getLogger().info("[TrapListener] Player " + player.getName() + " exited trap region. Calling clearForPlayer.");
+
+            DenyItemUseCustomAction.clearForPlayer(player.getUniqueId());
+            // Добавьте очистку других действий, например CooldownItemCustomAction.clearForPlayer(player.getUniqueId());
+
+            // 2. Удаление игрока из списка
+            this.playersInTrapRegions.remove(player.getUniqueId());
         }
     }
 
@@ -352,7 +370,7 @@ public class TrapItemListener implements Listener {
 
     }
 
-    private boolean isInAnyTrapRegion(Location location) {
+    public boolean isInAnyTrapRegion(Location location) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(location.getWorld()));
         if (regionManager == null) {

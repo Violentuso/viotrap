@@ -53,73 +53,51 @@ public class SkinCreationMenu implements Listener {
 
     }
 
-    private void updateMainMenuItems(Inventory inventory) {
-        inventory.clear();
-        inventory.setItem(0, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(1, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(2, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(3, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(4, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(5, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(6, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(7, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(8, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(9, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(52, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(51, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(50, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(49, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(48, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(47, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(46, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(45, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(18, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(27, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(36, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(17, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(26, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(35, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(44, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        inventory.setItem(53, this.createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
-        Material var10003 = Material.PAPER;
-        String var10004 = ColorUtil.format("&#CCCAF0Название скина");
-        String[] var10005 = new String[1];
-        String var10008 = ColorUtil.format("&#AEC1F2 • Текущее: ");
-        var10005[0] = var10008 + (String)this.plugin.getTempSkinData().getOrDefault("name", "Не задано ");
-        inventory.setItem(19, this.createMenuItem(var10003, var10004, var10005));
-        var10003 = Material.CHEST;
-        var10004 = ColorUtil.format("&#EAD7A2Схематика");
-        var10005 = new String[1];
-        var10008 = ColorUtil.format("&#AEC1F2 • Текущая: ");
-        var10005[0] = var10008 + (String)this.plugin.getTempSkinData().getOrDefault("schem", "Не задано ");
-        inventory.setItem(20, this.createMenuItem(var10003, var10004, var10005));
-        var10003 = Material.NOTE_BLOCK;
-        var10004 = ColorUtil.format("&#9ABDADТип звука");
-        var10005 = new String[1];
-        var10008 = ColorUtil.format("&#AEC1F2 • Текущий: ");
-        var10005[0] = var10008 + (String)this.plugin.getTempSkinData().getOrDefault("sound.type", "Не задано ");
-        inventory.setItem(21, this.createMenuItem(var10003, var10004, var10005));
-        var10003 = Material.NOTE_BLOCK;
-        var10004 = ColorUtil.format("&#E6E6C2Тип звука (завершение)");
-        var10005 = new String[1];
-        var10008 = ColorUtil.format("&#AEC1F2 • Текущий: ");
-        var10005[0] = var10008 + (String)this.plugin.getTempSkinData().getOrDefault("sound.type-ended", "Не задано ");
-        inventory.setItem(22, this.createMenuItem(var10003, var10004, var10005));
-        inventory.setItem(31, this.createMenuItem(Material.COMMAND_BLOCK, ColorUtil.format("&#ADD8E6Действия"), ColorUtil.format("&#AEC1F2 • Настроить действия скина (" + this.getActionsCount() + ") ")));
-        inventory.setItem(23, this.createMenuItem(Material.BEACON, ColorUtil.format("&#FFD700Флаги"), ColorUtil.format("&#AEC1F2 • Настроить флаги скина (" + this.getFlagsCount() + ") ")));
-        var10003 = Material.CLOCK;
-        var10004 = ColorUtil.format("&#FFEB3BКулдаун");
-        var10005 = new String[1];
-        var10008 = ColorUtil.format("&#AEC1F2 • Текущий: ");
-        var10005[0] = var10008 + (String)this.plugin.getTempSkinData().getOrDefault("cooldown", "Не задано ");
-        inventory.setItem(24, this.createMenuItem(var10003, var10004, var10005));
-        var10003 = Material.GLASS;
-        var10004 = ColorUtil.format("&#FF9800Время действия");
-        var10005 = new String[1];
-        var10008 = ColorUtil.format("&#AEC1F2 • Текущий: ");
-        var10005[0] = var10008 + (String)this.plugin.getTempSkinData().getOrDefault("duration", "Не задано ");
-        inventory.setItem(25, this.createMenuItem(var10003, var10004, var10005));
-        inventory.setItem(40, this.createMenuItem(Material.GREEN_WOOL, ColorUtil.format("&#90EE90Сохранить"), ColorUtil.format("&#AEC1F2 • Сохранить новый скин ")));
+    private void updateMainMenuItems(Inventory inv) {
+        inv.clear();
+
+        // Заполнение фона (стекло)
+        int[] glassSlots = {0,1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,44,45,46,47,48,49,50,51,52,53};
+        for (int slot : glassSlots) {
+            inv.setItem(slot, createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
+        }
+
+        // Основные элементы
+        inv.setItem(19, createMenuItem(Material.PAPER,
+                ColorUtil.format("&#CCCAF0Название скина"),
+                ColorUtil.format("&#AEC1F2 • Текущее: ") + plugin.getTempSkinData().getOrDefault("name", "Не задано")));
+
+        inv.setItem(20, createMenuItem(Material.CHEST,
+                ColorUtil.format("&#EAD7A2Схематика"),
+                ColorUtil.format("&#AEC1F2 • Текущая: ") + plugin.getTempSkinData().getOrDefault("schem", "Не задано")));
+
+        inv.setItem(21, createMenuItem(Material.NOTE_BLOCK,
+                ColorUtil.format("&#9ABDADТип звука"),
+                ColorUtil.format("&#AEC1F2 • Текущий: ") + plugin.getTempSkinData().getOrDefault("sound.type", "Не задано")));
+
+        inv.setItem(22, createMenuItem(Material.NOTE_BLOCK,
+                ColorUtil.format("&#E6E6C2Звук завершения"),
+                ColorUtil.format("&#AEC1F2 • Текущий: ") + plugin.getTempSkinData().getOrDefault("sound.type-ended", "Не задано")));
+
+        inv.setItem(23, createMenuItem(Material.BEACON,
+                ColorUtil.format("&#FFD700Флаги"),
+                ColorUtil.format("&#AEC1F2 • Настроить флаги (" + getFlagsCount() + ")")));
+
+        inv.setItem(24, createMenuItem(Material.CLOCK,
+                ColorUtil.format("&#FFEB3BКулдаун"),
+                ColorUtil.format("&#AEC1F2 • Текущий: ") + plugin.getTempSkinData().getOrDefault("cooldown", "Не задано")));
+
+        inv.setItem(25, createMenuItem(Material.GLASS,
+                ColorUtil.format("&#FF9800Время действия"),
+                ColorUtil.format("&#AEC1F2 • Текущий: ") + plugin.getTempSkinData().getOrDefault("duration", "Не задано")));
+
+        inv.setItem(31, createMenuItem(Material.COMMAND_BLOCK,
+                ColorUtil.format("&#ADD8E6Действия"),
+                ColorUtil.format("&#AEC1F2 • Настроить действия (" + getActionsCount() + ")")));
+
+        inv.setItem(40, createMenuItem(Material.GREEN_WOOL,
+                ColorUtil.format("&#90EE90Сохранить"),
+                ColorUtil.format("&#AEC1F2 • Сохранить новый скин")));
     }
 
     private ItemStack createMenuItem(Material material, String name, String... lore) {
@@ -130,10 +108,8 @@ public class SkinCreationMenu implements Listener {
             if (lore.length > 0) {
                 meta.setLore(Arrays.asList(lore));
             }
-
             item.setItemMeta(meta);
         }
-
         return item;
     }
 
@@ -143,13 +119,20 @@ public class SkinCreationMenu implements Listener {
     }
 
     private int getActionsCount() {
-        String actionsStr = (String)this.plugin.getTempSkinData().getOrDefault("actions", "");
+        String actionsStr = (String) plugin.getTempSkinData().getOrDefault("actions", "");
         return actionsStr.isEmpty() ? 0 : actionsStr.split("\\|").length;
     }
 
     private int getFlagsCount() {
-        String flagsStr = (String)this.plugin.getTempSkinData().getOrDefault("flags", "");
+        String flagsStr = (String) plugin.getTempSkinData().getOrDefault("flags", "");
         return flagsStr.isEmpty() ? 0 : flagsStr.split("\\|").length;
+    }
+
+    private void openActionsMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, "Действия скина");
+        currentSubMenu.put(player, "actions");
+        updateActionsMenuItems(inv, player);
+        player.openInventory(inv);
     }
 
     private void openDescriptionMenu(Player player) {
@@ -180,75 +163,94 @@ public class SkinCreationMenu implements Listener {
         inventory.setItem(26, this.createMenuItem(Material.BARRIER, ColorUtil.format("&#FF5555Назад"), ColorUtil.format("&#AEC1F2 • Вернуться в главное меню")));
     }
 
-    private void openActionsMenu(Player player) {
-        Inventory inventory = Bukkit.createInventory((InventoryHolder)null, 27, "Действия скина");
-        this.currentSubMenu.put(player, "actions");
-        this.updateActionsMenuItems(inventory, player);
-        player.openInventory(inventory);
-    }
 
-    private void updateActionsMenuItems(Inventory inventory, Player player) {
-        inventory.clear();
-        Map<String, String> actions = this.parseActions((String)this.plugin.getTempSkinData().getOrDefault("actions", ""));
+    private void updateActionsMenuItems(Inventory inv, Player player) {
+        inv.clear();
+        Map<String, String> actions = parseActions((String) plugin.getTempSkinData().getOrDefault("actions", ""));
         int slot = 0;
 
-        for(Map.Entry<String, String> actionEntry : actions.entrySet()) {
-            String actionKey = (String)actionEntry.getKey();
-            String actionData = (String)actionEntry.getValue();
-            String[] parts = actionData.split(";", 2);
-            String type = parts[0];
-            String data = parts.length > 1 ? parts[1] : "";
-            String var10000;
-            String result;
+        for (Map.Entry<String, String> entry : actions.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            String[] parts = value.split(";", 2);
+            String type = parts[0].toLowerCase();
+            String display;
 
-            switch (type.toLowerCase()) {
+            // Заменяем switch-выражение на обычный switch
+            switch (type) {
                 case "effect":
-                    result = "Эффект: " + data;
+                    display = "Эффект: " + (parts.length > 1 ? parts[1] : "?");
                     break;
-
                 case "command":
-                    result = "Команда: " + data;
+                    display = "Команда: " + (parts.length > 1 ? parts[1] : "?");
                     break;
-
                 case "teleportout":
-                    result = "Телепортация: " + data;
+                    display = "Телепортация: " + (parts.length > 1 ? parts[1] : "?");
                     break;
-
                 case "particlehitbox":
-                    result = "Частицы: " + data;
+                    display = "Частицы: " + (parts.length > 1 ? parts[1] : "?");
                     break;
-
+                case "cooldownitem":
+                    display = "Кулдаун предметов: " + (parts.length > 1 ? parts[1] : "?");
+                    break;
+                case "denyitemuse":
+                    display = "Запрет предметов: " + (parts.length > 1 ? parts[1] : "?");
+                    break;
                 default:
-                    result = "Неизвестное действие";
+                    display = "Неизвестное действие";
                     break;
             }
 
-
-            String display = result;
-            int var10001 = slot++;
-            Material var10003 = Material.PAPER;
-            String var10004 = ColorUtil.format("&#FFFFFFДействие: " + actionKey);
-            String[] var10005 = new String[3];
-            String var10008 = ColorUtil.format("&#AEC1F2 • ");
-            var10005[0] = var10008 + display;
-            var10005[1] = ColorUtil.format("&#55FF55ЛКМ для изменения");
-            var10005[2] = ColorUtil.format("&#FF5555ПКМ для удаления");
-            inventory.setItem(var10001, this.createMenuItem(var10003, var10004, var10005));
+            inv.setItem(slot++, createMenuItem(Material.PAPER,
+                    ColorUtil.format("&#FFFFFF" + key),
+                    ColorUtil.format("&#AEC1F2 • ") + display,
+                    "",
+                    ColorUtil.format("&#55FF55ЛКМ → изменить"),
+                    ColorUtil.format("&#FF5555ПКМ → удалить")));
         }
 
-        inventory.setItem(25, this.createMenuItem(Material.EMERALD, ColorUtil.format("&#90EE90Добавить действие"), ColorUtil.format("&#AEC1F2 • Добавить новое действие")));
-        inventory.setItem(26, this.createMenuItem(Material.BARRIER, ColorUtil.format("&#EB2D3AНазад"), ColorUtil.format("&#AEC1F2 • Вернуться в главное меню")));
+        inv.setItem(25, createMenuItem(Material.EMERALD,
+                ColorUtil.format("&#90EE90Добавить действие"),
+                ColorUtil.format("&#AEC1F2 • Добавить новое действие")));
+
+        inv.setItem(26, createMenuItem(Material.BARRIER,
+                ColorUtil.format("&#FF5555Назад"),
+                ColorUtil.format("&#AEC1F2 • Вернуться в главное меню")));
     }
 
     private void openActionTypeMenu(Player player) {
-        Inventory inventory = Bukkit.createInventory((InventoryHolder)null, 9, "Выбор типа действия");
-        this.currentSubMenu.put(player, "action_type");
-        inventory.setItem(0, this.createMenuItem(Material.POTION, ColorUtil.format("&#EED7A1Эффект"), ColorUtil.format("&#AEC1F2 • Добавить эффект (например, SPEED, POISON)")));
-        inventory.setItem(1, this.createMenuItem(Material.COMMAND_BLOCK, ColorUtil.format("&#CD8B62Команда"), ColorUtil.format("&#AEC1F2 • Добавить команду (например, gamemode)")));
-        inventory.setItem(2, this.createMenuItem(Material.ENDER_PEARL, ColorUtil.format("&#475C6CТелепортация"), ColorUtil.format("&#AEC1F2 • Добавить телепортацию вверх")));
-        inventory.setItem(3, this.createMenuItem(Material.FIREWORK_ROCKET, ColorUtil.format("&#50B8E7Частицы хитбокса"), ColorUtil.format("&#AEC1F2 • Добавить эффект частиц вокруг хитбокса")));
-        inventory.setItem(8, this.createMenuItem(Material.BARRIER, ColorUtil.format("&#EB2D3AНазад"), ColorUtil.format("&#AEC1F2 • Вернуться к действиям")));
-        player.openInventory(inventory);
+        Inventory inv = Bukkit.createInventory(null, 18, "Выбор типа действия");
+        currentSubMenu.put(player, "action_type");
+
+        inv.setItem(0, createMenuItem(Material.POTION,
+                ColorUtil.format("&#EED7A1Эффект"),
+                ColorUtil.format("&#AEC1F2 • Добавить эффект (SPEED, POISON и т.д.)")));
+
+        inv.setItem(1, createMenuItem(Material.COMMAND_BLOCK,
+                ColorUtil.format("&#CD8B62Команда"),
+                ColorUtil.format("&#AEC1F2 • Добавить команду (gamemode, effect и т.д.)")));
+
+        inv.setItem(2, createMenuItem(Material.ENDER_PEARL,
+                ColorUtil.format("&#475C6CТелепортация вверх"),
+                ColorUtil.format("&#AEC1F2 • Выкинуть игрока вверх")));
+
+        inv.setItem(3, createMenuItem(Material.FIREWORK_ROCKET,
+                ColorUtil.format("&#50B8E7Частицы хитбокса"),
+                ColorUtil.format("&#AEC1F2 • Показать частицы вокруг игрока")));
+
+        inv.setItem(4, createMenuItem(Material.CLOCK,
+                ColorUtil.format("&#FFEB3BКулдаун предметов"),
+                ColorUtil.format("&#AEC1F2 • Наложить кулдаун на предметы")));
+
+        inv.setItem(5, createMenuItem(Material.BARRIER,
+                ColorUtil.format("&#FF5555Запрет использования"),
+                ColorUtil.format("&#AEC1F2 • Запретить использовать предметы")));
+
+        inv.setItem(17, createMenuItem(Material.BARRIER,
+                ColorUtil.format("&#EB2D3AНазад"),
+                ColorUtil.format("&#AEC1F2 • Вернуться к действиям")));
+
+        player.openInventory(inv);
     }
 
     private void openFlagsMenu(Player player) {
@@ -299,32 +301,30 @@ public class SkinCreationMenu implements Listener {
                                 this.handleInput(player, "name", "Введите название скина:");
                                 break;
 
-                            case 21:
+                            case 20:
                                 this.handleInput(player, "schem", "Введите название схематики:");
                                 break;
 
-                            case 23:
+                            case 21:
                                 this.handleInput(player, "sound.type", "Введите тип звука (например, BLOCK_ANVIL_PLACE):");
                                 break;
-                            case 24:
+                            case 22:
                                 this.handleInput(player, "sound.type-ended", "Введите тип звука завершения (например, BLOCK_PISTON_EXTEND):");
                                 break;
-                            case 25:
+                            case 31:
                                 this.openActionsMenu(player);
                                 break;
-                            case 26:
+                            case 23:
                                 this.openFlagsMenu(player);
-                            case 27:
-                            case 30:
                             default:
                                 break;
-                            case 28:
+                            case 24:
                                 this.handleInput(player, "cooldown", "Введите кулдаун в секундах (целое число):");
                                 break;
-                            case 29:
+                            case 25:
                                 this.handleInput(player, "duration", "Введите время действия в секундах (целое число):");
                                 break;
-                            case 31:
+                            case 40:
                                 this.saveSkin(player);
                         }
                     }  else if (event.getView().getTitle().equals("Действия скина")) {
@@ -349,52 +349,50 @@ public class SkinCreationMenu implements Listener {
                             }
                         }
                     } else if (event.getView().getTitle().equals("Выбор типа действия")) {
-                        if (event.getSlot() == 8) {
+
+                        if (event.getSlot() == 17) {
                             this.openActionsMenu(player);
                         } else {
-                            String type;
-
+                            String type = null;
                             switch (event.getSlot()) {
-                                case 0:
-                                    type = "effect";
-                                    break;
-                                case 1:
-                                    type = "command";
-                                    break;
-                                case 2:
-                                    type = "teleportout";
-                                    break;
-                                case 3:
-                                    type = "particlehitbox";
-                                    break;
-                                default:
-                                    type = null;
-                                    break;
+                                case 0: type = "effect"; break;
+                                case 1: type = "command"; break;
+                                case 2: type = "teleportout"; break;
+                                case 3: type = "particlehitbox"; break;
+                                case 4: type = "cooldownitem"; break;     // ← новое
+                                case 5: type = "denyitemuse"; break;      // ← новое
                             }
 
-                            String actionType = type;
-                            if (actionType != null) {
-                                Map var14 = this.editingActionKey;
-                                int var16 = this.getActionsCount();
-                                var14.put(player, "action" + (var16 + 1));
-                                switch (actionType) {
+                            if (type != null) {
+                                int actionNum = this.getActionsCount() + 1;
+                                this.editingActionKey.put(player, "action" + actionNum);
+
+                                switch (type) {
                                     case "effect":
-                                        this.handleInput(player, "action_effect", "Введите эффект (формат: <p/o/rp> <effect> <amplifier> <duration>):");
+                                        handleInput(player, "action_effect",
+                                                "Введите: <p/o/rp> <эффект> <усилитель> <длительность>");
                                         break;
-
                                     case "command":
-                                        this.handleInput(player, "action_command", "Введите команду (формат: <command> <p/o/rp>):");
+                                        handleInput(player, "action_command",
+                                                "Введите: <команда> <p/o/rp>");
                                         break;
-
                                     case "teleportout":
-                                        this.handleInput(player, "action_teleportout", "Введите телепортацию (формат: <p/o/rp> <blocks> up):");
+                                        handleInput(player, "action_teleportout",
+                                                "Введите: <p/o/rp> <блоки> up");
                                         break;
-
                                     case "particlehitbox":
-                                        this.handleInput(player, "action_particlehitbox", "Введите частицы (формат: <p/o/rp> <particle> <duration>):");
+                                        handleInput(player, "action_particlehitbox",
+                                                "Введите: <p/o/rp> <particle> <длительность>");
+                                        break;
+                                    case "cooldownitem":
+                                        handleInput(player, "action_cooldownitem",
+                                                "Введите: <p/o/rp> <предмет1,предмет2,...> <секунды>");
+                                        break;
+                                    case "denyitemuse":
+                                        handleInput(player, "action_denyitemuse",
+                                                "Введите: <p/o/rp> <предмет1,предмет2,...>");
                                         break;
                                 }
-
                             }
                         }
                     } else if (event.getView().getTitle().equals("Флаги скина")) {
@@ -522,7 +520,34 @@ public class SkinCreationMenu implements Listener {
                     }
 
                     actions.put(actionKey, "particlehitbox;" + String.join(";", parts));
-                }
+                }  else if (actionType.equals("cooldownitem")) {
+                 String[] parts = input.split(" ", 3);
+                 if (parts.length != 3 || !isValidTarget(parts[0])) {
+                     player.sendMessage("§cНекорректный формат. Ожидается: <p/o/rp> <предмет1,предмет2,...> <секунды>");
+                     Bukkit.getScheduler().runTask(plugin, () -> openActionsMenu(player));
+                     return;
+                 }
+
+                 try {
+                     Integer.parseInt(parts[2]);
+                 } catch (NumberFormatException e) {
+                     player.sendMessage("§cКоличество секунд — целое число!");
+                     Bukkit.getScheduler().runTask(plugin, () -> openActionsMenu(player));
+                     return;
+                 }
+
+                 actions.put(actionKey, "cooldownitem;" + String.join(";", parts));
+             } else if (actionType.equals("denyitemuse")) {
+                 String[] parts = input.split(" ", 2);
+                 if (parts.length != 2 || !isValidTarget(parts[0])) {
+                     player.sendMessage("§cНекорректный формат. Ожидается: <p/o/rp> <предмет1,предмет2,...>");
+                     Bukkit.getScheduler().runTask(plugin, () -> openActionsMenu(player));
+                     return;
+                 }
+
+                 actions.put(actionKey, "denyitemuse;" + String.join(";", parts));
+             }
+
 
                 this.plugin.getTempSkinData().put("actions", this.serializeActions(actions));
                 this.editingActionKey.remove(player);
@@ -813,6 +838,22 @@ public class SkinCreationMenu implements Listener {
                                 try {
                                     this.plugin.getConfig().set(basePath + ".duration", Integer.parseInt(parts[3]));
                                 } catch (NumberFormatException e) {}
+                            }
+                            break;
+                        case "cooldownitem":
+                            if (parts.length >= 4) {
+                                this.plugin.getConfig().set(basePath + ".target", parts[1]);
+                                this.plugin.getConfig().set(basePath + ".items", parts[2].split(","));
+                                try {
+                                    this.plugin.getConfig().set(basePath + ".seconds", Integer.parseInt(parts[3]));
+                                } catch (NumberFormatException e) {}
+                            }
+                            break;
+
+                        case "denyitemuse":
+                            if (parts.length >= 3) {
+                                this.plugin.getConfig().set(basePath + ".target", parts[1]);
+                                this.plugin.getConfig().set(basePath + ".items", parts[2].split(","));
                             }
                             break;
                     }
