@@ -38,6 +38,9 @@ public class DivineAuraItemListener implements Listener {
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item != null && item.isSimilar(DivineAuraItem.getDivineAuraItem(item.getAmount(), this.plugin))) {
             if (event.getAction().toString().contains("RIGHT_CLICK")) {
+                if (!plugin.getConditionManager().checkConditions(player, "divine_aura")) {
+                    return; // Условия не выполнены, сообщение уже отправлено менеджером
+                }
                 if (player.hasCooldown(item.getType())) {
                     player.sendMessage("§cПодождите перед использованием снова!");
                 } else {

@@ -43,6 +43,9 @@ public class FirestormItemListener implements Listener {
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item != null && item.isSimilar(FirestormItem.getFirestormItem(item.getAmount(), this.plugin))) {
             if (event.getAction().toString().contains("RIGHT_CLICK")) {
+                if (!plugin.getConditionManager().checkConditions(player, "firestorm_item")) {
+                    return;
+                }
                 if (player.hasCooldown(item.getType())) {
                     player.sendMessage("§cПодождите перед использованием снова!");
                 } else {

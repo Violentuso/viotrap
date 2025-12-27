@@ -11,8 +11,6 @@ import java.util.*;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -20,13 +18,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.migrate1337.viotrap.actions.CustomActionFactory;
 import org.migrate1337.viotrap.actions.DenyItemUseCustomAction;
-import org.migrate1337.viotrap.commands.ApplyPlateSkinCommand;
-import org.migrate1337.viotrap.commands.ApplySkinCommand;
-import org.migrate1337.viotrap.commands.CreatePlateSkinCommand;
-import org.migrate1337.viotrap.commands.CreateSkinCommand;
-import org.migrate1337.viotrap.commands.GiveItemCommand;
-import org.migrate1337.viotrap.commands.RemoveTrapCommand;
-import org.migrate1337.viotrap.commands.SkinPointsCommand;
+import org.migrate1337.viotrap.commands.*;
+import org.migrate1337.viotrap.conditions.ConditionManager;
+import org.migrate1337.viotrap.gui.ConditionEditorMenu;
 import org.migrate1337.viotrap.gui.PlateSkinCreationMenu;
 import org.migrate1337.viotrap.gui.SkinCreationMenu;
 import org.migrate1337.viotrap.listeners.ChatListener;
@@ -38,7 +32,6 @@ import org.migrate1337.viotrap.listeners.RevealItemListener;
 import org.migrate1337.viotrap.listeners.TrapItemListener;
 import org.migrate1337.viotrap.utils.ActiveSkinsManager;
 import org.migrate1337.viotrap.utils.ChatInputHandler;
-import org.migrate1337.viotrap.utils.GiveItemTabCompleter;
 import org.migrate1337.viotrap.utils.SkinPointsManager;
 import org.migrate1337.viotrap.utils.SkinPointsPlaceholder;
 
@@ -118,6 +111,8 @@ public final class VioTrap extends JavaPlugin implements Listener {
     private StateFlag fireworkUseFlag;
     private ActiveSkinsManager activeSkinsManager;
     private final Map<String, String> tempPlateSkinData = new HashMap();
+    private ConditionManager conditionManager;
+    private ConditionEditorMenu conditionEditorMenu;
 
     public void onLoad() {
         try {
@@ -165,26 +160,32 @@ public final class VioTrap extends JavaPlugin implements Listener {
         this.getServer().getPluginManager().registerEvents(new DisorientItemListener(this), this);
         this.getServer().getPluginManager().registerEvents(new DivineAuraItemListener(this), this);
         this.skinCreationMenu = new SkinCreationMenu(this);
+        this.conditionManager = new ConditionManager(this);
+        this.conditionEditorMenu = new ConditionEditorMenu(this);
+        this.getServer().getPluginManager().registerEvents(this.conditionEditorMenu, this);
         this.getServer().getPluginManager().registerEvents(this.skinCreationMenu, this);
         this.getServer().getMessenger().registerOutgoingPluginChannel(this, "minecraft:client_settings");
-        this.getCommand("applyplateskin").setExecutor(new ApplyPlateSkinCommand(this, this.pointsManager, this.activeSkinsManager));
+
         this.pointsManager = new SkinPointsManager(this);
-        this.getCommand("skinpoints").setExecutor(new SkinPointsCommand(this, this.pointsManager));
+
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             (new SkinPointsPlaceholder(this, this.pointsManager, this.activeSkinsManager)).register();
         }
+        VioTrapCommand mainCommand = new VioTrapCommand(this, this.pointsManager, this.activeSkinsManager);
+        addDefaultConditionMessages();
 
+        if (this.getCommand("viotrap") != null) {
+            this.getCommand("viotrap").setExecutor(mainCommand);
+            this.getCommand("viotrap").setTabCompleter(mainCommand);
+        }
         this.getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         this.getServer().getPluginManager().registerEvents(new FirestormItemListener(this), this);
         this.getServer().getPluginManager().registerEvents(this, this);
-        this.getCommand("viotrap").setExecutor(new GiveItemCommand(this, this.activeSkinsManager));
-        this.getCommand("viotrap").setTabCompleter(new GiveItemTabCompleter());
-        this.getCommand("createskin").setExecutor(new CreateSkinCommand(this));
-        this.getCommand("applyskin").setExecutor(new ApplySkinCommand(this, this.pointsManager, this.activeSkinsManager));
+
         this.getServer().getPluginManager().registerEvents(new PlateSkinCreationMenu(this), this);
         DenyItemUseCustomAction denyListener = new DenyItemUseCustomAction("dummy", new HashSet<>());
         getServer().getPluginManager().registerEvents(denyListener, this);
-        this.getCommand("createplateskin").setExecutor(new CreatePlateSkinCommand(this));
+
         this.loadTrapConfig();
         this.chatInputHandler = new ChatInputHandler();
         this.tempSkinData = new HashMap();
@@ -696,7 +697,40 @@ public final class VioTrap extends JavaPlugin implements Listener {
 
         return skins;
     }
+    private void addDefaultConditionMessages() {
+        ConfigurationSection cmSection = getConfig().getConfigurationSection("condition_messages");
+        if (cmSection == null) {
+            cmSection = getConfig().createSection("condition_messages");
+        }
 
+        setDefaultMessageSection("permission", "У вас нет нужных прав!", "chat");
+        setDefaultMessageSection("block_below", "Вы стоите на неверном блоке!", "chat");
+        setDefaultMessageSection("is_sneaking", "Вы должны (не) красться!", "chat");
+        setDefaultMessageSection("min_health", "У вас недостаточно здоровья!", "chat");
+        setDefaultMessageSection("gamemode", "Вы в неверном режиме игры!", "chat");
+        setDefaultMessageSection("offhand_item", "В левой руке неверный предмет!", "chat");
+        setDefaultMessageSection("in_region", "Вы не в нужном регионе!", "chat");
+        setDefaultMessageSection("not_in_region", "Вы в запрещенном регионе!", "chat");
+        setDefaultMessageSection("is_flying", "Вы должны летать!", "chat");
+        setDefaultMessageSection("not_flying", "Вы не должны летать!", "chat");
+        setDefaultMessageSection("has_effect", "У вас нет нужного эффекта!", "chat");
+        setDefaultMessageSection("no_effect", "У вас есть запрещенный эффект!", "chat");
+        setDefaultMessageSection("in_biome", "Вы не в нужном биоме!", "chat");
+        setDefaultMessageSection("not_in_biome", "Вы в запрещенном биоме!", "chat");
+        setDefaultMessageSection("is_swimming", "Вы должны плыть!", "chat");
+        setDefaultMessageSection("not_swimming", "Вы не должны плыть!", "chat");
+        setDefaultMessageSection("default", "Условие не выполнено!", "chat");
+
+        saveConfig();
+    }
+
+    private void setDefaultMessageSection(String key, String defaultMessage, String defaultType) {
+        String path = "condition_messages." + key;
+        if (!getConfig().contains(path + ".message")) {
+            getConfig().set(path + ".message", defaultMessage);
+            getConfig().set(path + ".type", defaultType);
+        }
+    }
     public TrapItemListener getTrapItemListener() {
         return this.trapItemListener;
     }
@@ -716,7 +750,13 @@ public final class VioTrap extends JavaPlugin implements Listener {
     public String getFirestormItemSoundType() {
         return this.getConfig().getString("firestorm_item.sound.type", "ENTITY_BLAZE_SHOOT");
     }
+    public ConditionManager getConditionManager() {
+        return conditionManager;
+    }
 
+    public ConditionEditorMenu getConditionEditorMenu() {
+        return conditionEditorMenu;
+    }
     public float getFirestormItemSoundVolume() {
         return (float)this.getConfig().getDouble("firestorm_item.sound.volume", (double)1.0F);
     }
@@ -750,4 +790,5 @@ public final class VioTrap extends JavaPlugin implements Listener {
     public SkinPointsManager getSkinPointsManager() {
         return this.pointsManager;
     }
+
 }

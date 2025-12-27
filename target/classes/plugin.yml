@@ -9,8 +9,3 @@ softdepend:
   - PvPManager
 commands:
   viotrap:
-  createskin:
-  applyskin:
-  skinpoints:
-  createplateskin:
-  applyplateskin:

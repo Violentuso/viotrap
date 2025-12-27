@@ -47,9 +47,13 @@ public class RevealItemListener implements Listener {
         if (item != null && item.isSimilar(RevealItem.getRevealItem(item.getAmount()))) {
 
             if (event.getAction().toString().contains("RIGHT_CLICK")) {
+                if (!plugin.getConditionManager().checkConditions(player, "reveal_item")) {
+                    return;
+                }
                 if (player.hasCooldown(item.getType())) {
                     player.sendMessage("§cПодождите перед использованием снова!");
                 } else {
+
                     item.setAmount(item.getAmount() - 1);
                     player.sendMessage(this.plugin.getConfig().getString("reveal_item.messages.success_used"));
                     Location location = player.getLocation();

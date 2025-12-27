@@ -51,6 +51,9 @@ public class DisorientItemListener implements Listener {
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item != null && item.isSimilar(DisorientItem.getDisorientItem(item.getAmount()))) {
             if (event.getAction().toString().contains("RIGHT_CLICK")) {
+                if (!plugin.getConditionManager().checkConditions(player, "disorient_item")) {
+                    return;
+                }
                 if (player.hasCooldown(item.getType())) {
                     player.sendMessage("§cПодождите перед использованием снова!");
                 } else {

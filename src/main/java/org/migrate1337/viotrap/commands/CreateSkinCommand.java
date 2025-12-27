@@ -1,6 +1,5 @@
 package org.migrate1337.viotrap.commands;
 
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -10,6 +9,7 @@ import org.migrate1337.viotrap.gui.SkinCreationMenu;
 
 public class CreateSkinCommand implements CommandExecutor {
     private final VioTrap plugin;
+    private final String PREFIX = "§x§0§0§F§F§7§F§l✦ §x§5§5§F§F§5§5V§x§A§A§F§F§A§Ai§x§F§F§F§F§F§Fo§x§F§F§D§D§F§FT§x§F§F§B§B§F§Fr§x§F§F§9§9§F§Fa§x§F§F§7§7§F§Fp §8| §f";
 
     public CreateSkinCommand(VioTrap plugin) {
         this.plugin = plugin;
@@ -17,10 +17,10 @@ public class CreateSkinCommand implements CommandExecutor {
 
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage("§cЭту команду можно использовать только игроку.");
+            sender.sendMessage(PREFIX + "§cЭту команду может использовать только игрок.");
             return true;
         } else if (!sender.hasPermission("viotrap.createskin")) {
-            sender.sendMessage(String.valueOf(ChatColor.RED) + "У вас нет прав на использование данной команды!");
+            sender.sendMessage(PREFIX + "§cУ вас нет прав на создание скина.");
             return false;
         } else {
             Player player = (Player)sender;
