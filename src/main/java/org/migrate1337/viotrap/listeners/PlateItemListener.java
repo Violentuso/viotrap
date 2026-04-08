@@ -21,15 +21,18 @@ import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
 import java.io.File;
 import java.io.FileInputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -56,6 +59,7 @@ import org.migrate1337.viotrap.data.TrapBlockData;
 import org.migrate1337.viotrap.items.PlateItem;
 import org.migrate1337.viotrap.items.TrapItem;
 import org.migrate1337.viotrap.utils.ActiveSkinsManager;
+import org.migrate1337.viotrap.utils.BlockDataSerializer;
 import org.migrate1337.viotrap.utils.CombatLogXHandler;
 import org.migrate1337.viotrap.utils.GlobalTrapRegistry;
 import org.migrate1337.viotrap.utils.PVPManagerHandle;
@@ -290,10 +294,14 @@ public class PlateItemListener implements Listener {
         for (World world : Bukkit.getWorlds()) {
             RegionManager regionManager = container.get(BukkitAdapter.adapt(world));
             if (regionManager != null) {
+                List<String> toRemove = new ArrayList<>();
                 for (String regionName : regionManager.getRegions().keySet()) {
-                    if (regionName.endsWith("plate_")) {
-                        regionManager.removeRegion(regionName);
+                    if (regionName.startsWith("plate_")) {
+                        toRemove.add(regionName);
                     }
+                }
+                for (String regionName : toRemove) {
+                    regionManager.removeRegion(regionName);
                 }
             }
         }
@@ -301,6 +309,29 @@ public class PlateItemListener implements Listener {
         this.restoreAllBlocks();
         this.activePlates.clear();
         GlobalTrapRegistry.getInstance().clearAll();
+    }
+
+    public void cleanupOnDisable() {
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+
+        for (World world : Bukkit.getWorlds()) {
+            RegionManager regionManager = container.get(BukkitAdapter.adapt(world));
+            if (regionManager != null) {
+                List<String> toRemove = new ArrayList<>();
+                for (String regionName : regionManager.getRegions().keySet()) {
+                    if (regionName.startsWith("plate_")) {
+                        toRemove.add(regionName);
+                    }
+                }
+                for (String regionName : toRemove) {
+                    regionManager.removeRegion(regionName);
+                }
+            }
+        }
+
+        this.activePlates.clear();
+        this.activePlateTimers.clear();
+        this.playerReplacedBlocks.clear();
     }
 
     private boolean isRegionNearby(Location location, String worldName) {
@@ -397,7 +428,19 @@ public class PlateItemListener implements Listener {
             this.loadPlatesFromConfig();
         }
 
+        for (Map.Entry<String, PlateData> entry : new HashMap<>(this.activePlateTimers).entrySet()) {
+            String plateId = entry.getKey();
+            PlateData data = entry.getValue();
+            this.restoreBlocks(data.getPlayerId(), plateId);
+            Player player = Bukkit.getPlayer(data.getPlayerId());
+            if (player != null) {
+                this.removePlateRegion(player, data.getLocation());
+            }
+            this.removePlateFromFile(data.getLocation());
+        }
+
         this.activePlates.clear();
+        this.activePlateTimers.clear();
         GlobalTrapRegistry.getInstance().clearAll();
     }
 
@@ -406,12 +449,14 @@ public class PlateItemListener implements Listener {
 
     }
     private void saveReplacedBlocks(UUID playerId, Location startLocation, Clipboard clipboard, String regionId) {
-        Map<Location, TrapBlockData> replacedBlocks = new HashMap<>();
+        Map<Location, TrapBlockData> replacedBlocks = this.playerReplacedBlocks.computeIfAbsent(playerId, k -> new HashMap<>());
         BlockVector3 origin = clipboard.getOrigin();
 
         int offsetX = startLocation.getBlockX() - origin.getBlockX();
         int offsetY = startLocation.getBlockY() - origin.getBlockY();
         int offsetZ = startLocation.getBlockZ() - origin.getBlockZ();
+
+        Set<Location> processedDoubleChestPairs = new HashSet<>();
 
         for (BlockVector3 vec : clipboard.getRegion()) {
             if (clipboard.getBlock(vec).getBlockType().getMaterial().isAir()) {
@@ -441,16 +486,32 @@ public class PlateItemListener implements Listener {
                 if (holder instanceof DoubleChest) {
                     DoubleChest doubleChest = (DoubleChest) holder;
                     isDoubleChest = true;
-                    contents = inventory.getContents().clone();
 
-                    if (doubleChest.getLeftSide() == holder) {
-                        InventoryHolder right = doubleChest.getRightSide();
-                        if (right instanceof Chest) {
-                            pairedLocation = ((Chest) right).getLocation();
+                    InventoryHolder leftSide = doubleChest.getLeftSide();
+                    InventoryHolder rightSide = doubleChest.getRightSide();
+                    Location leftLoc = (leftSide instanceof Chest) ? ((Chest) leftSide).getLocation() : null;
+                    Location rightLoc = (rightSide instanceof Chest) ? ((Chest) rightSide).getLocation() : null;
+
+                    if (leftLoc != null && leftLoc.getBlockX() == worldLoc.getBlockX()
+                            && leftLoc.getBlockY() == worldLoc.getBlockY()
+                            && leftLoc.getBlockZ() == worldLoc.getBlockZ()) {
+                        pairedLocation = rightLoc;
+                    } else {
+                        pairedLocation = leftLoc;
+                    }
+
+                    if (!processedDoubleChestPairs.contains(worldLoc)) {
+                        Inventory combined = doubleChest.getInventory();
+                        contents = combined.getContents() != null ? combined.getContents().clone() : new ItemStack[54];
+                        if (pairedLocation != null) {
+                            processedDoubleChestPairs.add(pairedLocation);
                         }
                     }
+
+                    doubleChest.getInventory().clear();
                 } else {
-                    contents = inventory.getContents().clone();
+                    contents = container.getSnapshotInventory().getContents().clone();
+                    container.getInventory().clear();
                 }
             }
 
@@ -469,14 +530,12 @@ public class PlateItemListener implements Listener {
                     spawnedType
             );
             currentWorldData.setDoubleChest(isDoubleChest);
-            if(pairedLocation != null) currentWorldData.setPairedChestLocation(pairedLocation);
+            if (pairedLocation != null) currentWorldData.setPairedChestLocation(pairedLocation);
 
             TrapBlockData finalData = GlobalTrapRegistry.getInstance().registerAndGetOriginal(worldLoc, regionId, currentWorldData);
 
             replacedBlocks.put(worldLoc.clone(), finalData);
         }
-
-        this.playerReplacedBlocks.put(playerId, replacedBlocks);
     }
 
     private void restoreBlocks(UUID playerId, String regionId) {
@@ -485,50 +544,61 @@ public class PlateItemListener implements Listener {
             return;
         }
 
+        List<Map.Entry<Location, TrapBlockData>> toRestore = new ArrayList<>();
         Iterator<Map.Entry<Location, TrapBlockData>> iterator = replacedBlocks.entrySet().iterator();
 
-        while(iterator.hasNext()) {
+        while (iterator.hasNext()) {
             Map.Entry<Location, TrapBlockData> entry = iterator.next();
             Location loc = entry.getKey();
-            TrapBlockData oldData = entry.getValue();
 
             boolean shouldRestore = GlobalTrapRegistry.getInstance().unregister(loc, regionId);
 
             if (!shouldRestore) {
-                this.removePlateFromFile(loc);
                 iterator.remove();
                 continue;
             }
+
+            toRestore.add(entry);
+            iterator.remove();
+        }
+
+        for (Map.Entry<Location, TrapBlockData> entry : toRestore) {
+            Location loc = entry.getKey();
+            TrapBlockData oldData = entry.getValue();
 
             Block currentBlock = loc.getBlock();
             currentBlock.setType(oldData.getMaterial());
             currentBlock.setBlockData(oldData.getBlockData());
 
             BlockState state = currentBlock.getState();
-
             if (state instanceof CreatureSpawner && oldData.getSpawnedType() != null) {
-                CreatureSpawner spawner = (CreatureSpawner) state;
                 try {
-                    spawner.setSpawnedType(EntityType.valueOf(oldData.getSpawnedType()));
-                    spawner.update(true);
+                    ((CreatureSpawner) state).setSpawnedType(EntityType.valueOf(oldData.getSpawnedType()));
+                    state.update(true, false);
                 } catch (Exception ignored) {}
             }
+        }
 
-            if (oldData.getContents() != null && state instanceof Container) {
-                Container container = (Container) state;
+        for (Map.Entry<Location, TrapBlockData> entry : toRestore) {
+            TrapBlockData oldData = entry.getValue();
+            if (oldData.getContents() == null) continue;
+
+            Block block = entry.getKey().getBlock();
+            BlockState freshState = block.getState();
+
+            if (freshState instanceof Container) {
+                Container container = (Container) freshState;
                 Inventory inv = container.getInventory();
+                ItemStack[] contents = oldData.getContents();
 
-                if (inv.getHolder() instanceof DoubleChest) {
-                    inv.setContents(oldData.getContents());
+                if (contents.length != inv.getSize()) {
+                    ItemStack[] adjusted = new ItemStack[inv.getSize()];
+                    System.arraycopy(contents, 0, adjusted, 0, Math.min(contents.length, inv.getSize()));
+                    inv.setContents(adjusted);
                 } else {
-                    ItemStack[] trimmed = new ItemStack[27];
-                    System.arraycopy(oldData.getContents(), 0, trimmed, 0, Math.min(oldData.getContents().length, 27));
-                    inv.setContents(trimmed);
+                    inv.setContents(contents);
                 }
             }
-
-            this.removePlateFromFile(loc);
-            iterator.remove();
         }
 
         if (replacedBlocks.isEmpty()) {
@@ -546,29 +616,43 @@ public class PlateItemListener implements Listener {
                     for (String plateKey : worldSection.getKeys(false)) {
                         ConfigurationSection plateSection = worldSection.getConfigurationSection(plateKey);
                         if (plateSection != null) {
-                            UUID playerId = UUID.fromString(plateSection.getString("player"));
+                            UUID playerId;
+                            try {
+                                playerId = UUID.fromString(plateSection.getString("player"));
+                            } catch (Exception e) {
+                                continue;
+                            }
                             String world = plateSection.getString("world");
                             int x = plateSection.getInt("x");
                             int y = plateSection.getInt("y");
                             int z = plateSection.getInt("z");
                             String skin = plateSection.getString("skin", "default");
                             long endTime = plateSection.getLong("endTime", 0L);
+
+                            if (Bukkit.getWorld(world) == null) continue;
                             Location location = new Location(Bukkit.getWorld(world), (double) x, (double) y, (double) z);
 
                             String playerName = Bukkit.getOfflinePlayer(playerId).getName();
-                            if(playerName == null) playerName = "Unknown";
+                            if (playerName == null) playerName = "Unknown";
                             String plateId = "plate_" + playerName + "_" + x + "_" + y + "_" + z;
 
                             long currentTime = System.currentTimeMillis();
                             long remainingMillis = endTime - currentTime;
 
-                            if (remainingMillis > 0L) {
-                                Block block = location.getBlock();
-                                TrapBlockData currentData = new TrapBlockData(block.getType(), block.getBlockData(), null, null);
-                                TrapBlockData finalData = GlobalTrapRegistry.getInstance().registerAndGetOriginal(location, plateId, currentData);
+                            Map<Location, TrapBlockData> persistedBlocks = BlockDataSerializer.loadBlocksFromConfig(plateSection, "blocks");
 
-                                this.playerReplacedBlocks.putIfAbsent(playerId, new HashMap<>());
-                                this.playerReplacedBlocks.get(playerId).put(location, finalData);
+                            if (remainingMillis > 0L) {
+                                if (!persistedBlocks.isEmpty()) {
+                                    this.playerReplacedBlocks.computeIfAbsent(playerId, k -> new HashMap<>()).putAll(persistedBlocks);
+                                    for (Map.Entry<Location, TrapBlockData> entry : persistedBlocks.entrySet()) {
+                                        GlobalTrapRegistry.getInstance().registerAndGetOriginal(entry.getKey(), plateId, entry.getValue());
+                                    }
+                                } else {
+                                    Block block = location.getBlock();
+                                    TrapBlockData currentData = new TrapBlockData(block.getType(), block.getBlockData(), null, null);
+                                    TrapBlockData finalData = GlobalTrapRegistry.getInstance().registerAndGetOriginal(location, plateId, currentData);
+                                    this.playerReplacedBlocks.computeIfAbsent(playerId, k -> new HashMap<>()).put(location, finalData);
+                                }
 
                                 this.activePlateTimers.put(plateId, new PlateData(playerId, location, skin, endTime));
 
@@ -576,7 +660,10 @@ public class PlateItemListener implements Listener {
                                     PlateData data = this.activePlateTimers.remove(plateId);
                                     if (data != null) {
                                         this.restoreBlocks(data.getPlayerId(), plateId);
-                                        this.removePlateRegion(Bukkit.getPlayer(data.getPlayerId()), data.getLocation());
+                                        Player player = Bukkit.getPlayer(data.getPlayerId());
+                                        if (player != null) {
+                                            this.removePlateRegion(player, data.getLocation());
+                                        }
                                         this.removePlateFromFile(data.getLocation());
                                         Location loc = data.getLocation();
                                         String soundEnded = data.getSkin().equals("default") ? this.plugin.getConfig().getString("plate.sound.type-ended", "BLOCK_PISTON_EXTEND") : this.plugin.getConfig().getString("plate_skins." + data.getSkin() + ".sound.type-ended", "BLOCK_PISTON_EXTEND");
@@ -586,7 +673,13 @@ public class PlateItemListener implements Listener {
                                     }
                                 }, remainingMillis / 50L);
                             } else {
-
+                                if (!persistedBlocks.isEmpty()) {
+                                    this.playerReplacedBlocks.put(playerId, persistedBlocks);
+                                    for (Map.Entry<Location, TrapBlockData> entry : persistedBlocks.entrySet()) {
+                                        GlobalTrapRegistry.getInstance().registerAndGetOriginal(entry.getKey(), plateId, entry.getValue());
+                                    }
+                                    this.restoreBlocks(playerId, plateId);
+                                }
                                 this.removePlateFromFile(location);
                             }
                         }
@@ -605,6 +698,15 @@ public class PlateItemListener implements Listener {
         this.plugin.getPlatesConfig().set(path + ".z", location.getBlockZ());
         this.plugin.getPlatesConfig().set(path + ".skin", skin);
         this.plugin.getPlatesConfig().set(path + ".endTime", System.currentTimeMillis() + durationSeconds * 1000L);
+
+        Map<Location, TrapBlockData> blocks = this.playerReplacedBlocks.get(player.getUniqueId());
+        if (blocks != null && !blocks.isEmpty()) {
+            ConfigurationSection section = this.plugin.getPlatesConfig().getConfigurationSection(path);
+            if (section != null) {
+                BlockDataSerializer.saveBlocksToConfig(section, "blocks", blocks);
+            }
+        }
+
         this.plugin.savePlatesConfig();
     }
 
