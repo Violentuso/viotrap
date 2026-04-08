@@ -139,7 +139,23 @@ public final class VioTrap extends JavaPlugin implements Listener {
         }
 
     }
-
+    public void reloadVioTrapConfig() {
+        reloadConfig();
+        config = getConfig();
+        loadTrapConfig();
+        loadTrapsConfig();
+        loadPlateConfig();
+        loadPlatesConfig();
+        loadRevealItemConfig();
+        loadDivineAuraItemConfig();
+        if (trapItemListener != null) {
+            trapItemListener.getSkinActions().clear();
+            trapItemListener.getSkinActions().put("default", org.migrate1337.viotrap.actions.CustomActionFactory.loadActions("default", this));
+            for (String skin : getSkinNames()) {
+                trapItemListener.getSkinActions().put(skin, org.migrate1337.viotrap.actions.CustomActionFactory.loadActions(skin, this));
+            }
+        }
+    }
     public void onEnable() {
         plugin = this;
         config = this.getConfig();
@@ -173,7 +189,6 @@ public final class VioTrap extends JavaPlugin implements Listener {
         }
         VioTrapCommand mainCommand = new VioTrapCommand(this, this.pointsManager, this.activeSkinsManager);
         addDefaultConditionMessages();
-
         if (this.getCommand("viotrap") != null) {
             this.getCommand("viotrap").setExecutor(mainCommand);
             this.getCommand("viotrap").setTabCompleter(mainCommand);

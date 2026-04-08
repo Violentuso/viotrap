@@ -43,7 +43,6 @@ public class SkinPointsPlaceholder extends PlaceholderExpansion {
             return "";
         }
 
-        // %viotrap_trap_active_skin%
         if (params.equalsIgnoreCase("trap_active_skin")) {
             String skin = activeSkinsManager.getActiveTrapSkin(player.getUniqueId());
             return (skin == null || skin.equals("default") || skin.isEmpty())
@@ -51,7 +50,6 @@ public class SkinPointsPlaceholder extends PlaceholderExpansion {
                     : skin;
         }
 
-        // %viotrap_plate_active_skin%
         if (params.equalsIgnoreCase("plate_active_skin")) {
             String skin = activeSkinsManager.getActivePlateSkin(player.getUniqueId());
             return (skin == null || skin.equals("default") || skin.isEmpty())
@@ -59,7 +57,6 @@ public class SkinPointsPlaceholder extends PlaceholderExpansion {
                     : skin;
         }
 
-        // %viotrap_points_название_скина%
         if (params.startsWith("points_")) {
             String skin = params.substring(7);
             if (plugin.getSkinNames().contains(skin) || plugin.getPlateSkinNames().contains(skin)) {
@@ -69,7 +66,6 @@ public class SkinPointsPlaceholder extends PlaceholderExpansion {
             return "0";
         }
 
-        // Поддержка старых плейсхолдеров (можно потом убрать)
         if (params.equals("currently_activeskin_trap")) {
             String skin = activeSkinsManager.getActiveTrapSkin(player.getUniqueId());
             return (skin == null || skin.equals("default")) ? "Нет активного скина" : skin;

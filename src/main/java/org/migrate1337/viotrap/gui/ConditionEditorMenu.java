@@ -189,7 +189,7 @@ public class ConditionEditorMenu implements Listener {
         plugin.getChatInputHandler().waitForInput(player, (input) -> {
             String section = editingSection.get(player);
             if (section != null) {
-                // Валидация
+
                 switch (type) {
                     case BLOCK_BELOW:
                     case ITEM_IN_OFFHAND:

@@ -51,13 +51,12 @@ public class ParticleHitboxCustomAction implements CustomAction {
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    // Если игрок вышел — прекращаем задачу
+
                     if (player == null || !player.isOnline()) {
                         cancel();
                         return;
                     }
 
-                    // Спавн частиц по центру хитбокса
                     Location loc = player.getLocation().add(0, player.getHeight() / 2, 0);
                     player.getWorld().spawnParticle(
                             particle,

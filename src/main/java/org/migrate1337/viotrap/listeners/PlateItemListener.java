@@ -76,13 +76,27 @@ public class PlateItemListener implements Listener {
         this.activeSkinsManager = plugin.getActiveSkinsManager();
         this.loadPlatesFromConfig();
     }
+    public File getSchematicFile(String fileName) {
 
+        File worldEditFile = new File("plugins/WorldEdit/schematics/" + fileName);
+        if (worldEditFile.exists()) return worldEditFile;
+
+        if (Bukkit.getPluginManager().getPlugin("FastAsyncWorldEdit") != null) {
+            File faweFile1 = new File("plugins/FastAsyncWorldEdit/schematics/" + fileName);
+            if (faweFile1.exists()) return faweFile1;
+
+        }
+        return worldEditFile;
+    }
     @EventHandler
     public void onPlayerUsePlate(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item != null && PlateItem.getUniqueId(item) != null && (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
-            if (!plugin.getConditionManager().checkConditions(player, "trap")) {
+            if (item == null || item.getType().isAir() || item.getAmount() <= 0) {
+                return;
+            }
+            if (!plugin.getConditionManager().checkConditions(player, "plate")) {
                 return;
             }
             if (this.plugin.getConfig().getBoolean("plate.enable-pvp", false)) {
@@ -120,7 +134,7 @@ public class PlateItemListener implements Listener {
                 int durationTicks = (skin.equals("default") ? this.plugin.getConfig().getInt("plate.duration", 5) : this.plugin.getConfig().getInt("plate_skins." + skin + ".duration", 5)) * 20;
 
                 try {
-                    player.playSound(location, Sound.valueOf(sound), soundVolume, soundPitch);
+                    location.getWorld().playSound(location, Sound.valueOf(sound), soundVolume, soundPitch);
                 } catch (IllegalArgumentException var24) {
                     player.sendMessage("§cОшибка: некорректный звук в конфигурации скина.");
                     return;
@@ -131,7 +145,8 @@ public class PlateItemListener implements Listener {
                 item.setAmount(item.getAmount() - 1);
 
                 try {
-                    File schematicFile = new File("plugins/WorldEdit/schematics/" + directionInfo.schematicName);
+                    File schematicFile = getSchematicFile(directionInfo.schematicName);
+
                     if (!schematicFile.exists()) {
                         player.sendMessage(this.plugin.getConfig().getString("plate.messages.placement_failed", "Не удалось загрузить пласт!"));
                         return;
@@ -160,7 +175,6 @@ public class PlateItemListener implements Listener {
                     try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(player.getWorld()))) {
                         BlockVector3 pastePosition = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
 
-                        // ! ВАЖНО: Сохранение через реестр
                         this.saveReplacedBlocks(player.getUniqueId(), location, clipboard, plateId);
 
                         ClipboardHolder holder = new ClipboardHolder(clipboard);
@@ -186,7 +200,6 @@ public class PlateItemListener implements Listener {
                         Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
                             this.activePlateTimers.remove(plateId);
 
-                            // ! ВАЖНО: Восстановление через реестр
                             this.restoreBlocks(player.getUniqueId(), plateId);
 
                             this.removePlateRegion(player, location);
@@ -384,25 +397,14 @@ public class PlateItemListener implements Listener {
             this.loadPlatesFromConfig();
         }
 
-        // Очистка всех пластов (регистров)
         this.activePlates.clear();
         GlobalTrapRegistry.getInstance().clearAll();
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        // Мы не должны восстанавливать блоки при выходе игрока мгновенно, если таймер еще идет, 
-        // но по вашей старой логике это происходило. Я закомментировал немедленное восстановление,
-        // так как таймеры (runTaskLater) все равно сработают.
-        // Если вы хотите восстанавливать при выходе:
-        // UUID playerId = event.getPlayer().getUniqueId();
-        // this.restoreBlocks(playerId, ...); // Требуется ID региона, которого тут нет
-        // this.playerReplacedBlocks.remove(playerId);
-    }
 
-    // ------------------------------------------------------------------------------------------------
-    // ВАЖНО: Новая логика сохранения
-    // ------------------------------------------------------------------------------------------------
+    }
     private void saveReplacedBlocks(UUID playerId, Location startLocation, Clipboard clipboard, String regionId) {
         Map<Location, TrapBlockData> replacedBlocks = new HashMap<>();
         BlockVector3 origin = clipboard.getOrigin();
@@ -412,7 +414,6 @@ public class PlateItemListener implements Listener {
         int offsetZ = startLocation.getBlockZ() - origin.getBlockZ();
 
         for (BlockVector3 vec : clipboard.getRegion()) {
-            // Пропускаем воздух
             if (clipboard.getBlock(vec).getBlockType().getMaterial().isAir()) {
                 continue;
             }
@@ -470,7 +471,6 @@ public class PlateItemListener implements Listener {
             currentWorldData.setDoubleChest(isDoubleChest);
             if(pairedLocation != null) currentWorldData.setPairedChestLocation(pairedLocation);
 
-            // Регистрация в глобальном реестре
             TrapBlockData finalData = GlobalTrapRegistry.getInstance().registerAndGetOriginal(worldLoc, regionId, currentWorldData);
 
             replacedBlocks.put(worldLoc.clone(), finalData);
@@ -479,9 +479,6 @@ public class PlateItemListener implements Listener {
         this.playerReplacedBlocks.put(playerId, replacedBlocks);
     }
 
-    // ------------------------------------------------------------------------------------------------
-    // ВАЖНО: Новая логика восстановления
-    // ------------------------------------------------------------------------------------------------
     private void restoreBlocks(UUID playerId, String regionId) {
         Map<Location, TrapBlockData> replacedBlocks = this.playerReplacedBlocks.get(playerId);
         if (replacedBlocks == null || replacedBlocks.isEmpty()) {
@@ -495,7 +492,6 @@ public class PlateItemListener implements Listener {
             Location loc = entry.getKey();
             TrapBlockData oldData = entry.getValue();
 
-            // Проверка через реестр
             boolean shouldRestore = GlobalTrapRegistry.getInstance().unregister(loc, regionId);
 
             if (!shouldRestore) {
@@ -504,7 +500,6 @@ public class PlateItemListener implements Listener {
                 continue;
             }
 
-            // Физическое восстановление
             Block currentBlock = loc.getBlock();
             currentBlock.setType(oldData.getMaterial());
             currentBlock.setBlockData(oldData.getBlockData());
@@ -560,7 +555,6 @@ public class PlateItemListener implements Listener {
                             long endTime = plateSection.getLong("endTime", 0L);
                             Location location = new Location(Bukkit.getWorld(world), (double) x, (double) y, (double) z);
 
-                            // Формируем ID для реестра
                             String playerName = Bukkit.getOfflinePlayer(playerId).getName();
                             if(playerName == null) playerName = "Unknown";
                             String plateId = "plate_" + playerName + "_" + x + "_" + y + "_" + z;
@@ -569,18 +563,6 @@ public class PlateItemListener implements Listener {
                             long remainingMillis = endTime - currentTime;
 
                             if (remainingMillis > 0L) {
-                                // Нужно зарегистрировать блоки в реестре.
-                                // Поскольку у нас нет схематики в памяти при загрузке пластов так же легко как в трапках (тут логика DirectionInfo),
-                                // мы попытаемся получить схематику.
-                                // (Внимание: здесь возможна неточность, так как мы не знаем Yaw/Pitch игрока, который ставил пласт.
-                                // Но мы должны хотя бы попытаться зарегистрировать центральный блок или использовать сохраненные данные).
-
-                                // В текущей реализации пластов (PlateItemListener) вы сохраняете каждый блок в playerReplacedBlocks при Load.
-                                // Но вы берете блок из мира: Block block = location.getBlock();
-                                // Это ОШИБКА, если там уже стоит пласт (обсидиан).
-                                // Чтобы исправить это полностью, вам нужно сохранять схематику или оригинальные данные в файл.
-                                // Сейчас я добавлю регистрацию в реестр ТЕКУЩЕГО блока, чтобы хотя бы пересечения работали.
-
                                 Block block = location.getBlock();
                                 TrapBlockData currentData = new TrapBlockData(block.getType(), block.getBlockData(), null, null);
                                 TrapBlockData finalData = GlobalTrapRegistry.getInstance().registerAndGetOriginal(location, plateId, currentData);
@@ -604,7 +586,7 @@ public class PlateItemListener implements Listener {
                                     }
                                 }, remainingMillis / 50L);
                             } else {
-                                // Время вышло
+
                                 this.removePlateFromFile(location);
                             }
                         }

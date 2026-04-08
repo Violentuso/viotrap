@@ -11,10 +11,8 @@ import java.util.Set;
 public class GlobalTrapRegistry {
     private static final GlobalTrapRegistry instance = new GlobalTrapRegistry();
 
-    // Хранит ИСТИННОЕ состояние блока (до установки любых трапок)
     private final Map<Location, TrapBlockData> originalBlockStates = new HashMap<>();
 
-    // Хранит список ID регионов, которые сейчас используют этот блок
     private final Map<Location, Set<String>> activeRegionsOnBlock = new HashMap<>();
 
     public static GlobalTrapRegistry getInstance() {
@@ -29,14 +27,13 @@ public class GlobalTrapRegistry {
      * @return Данные, которые нужно сохранить как "оригинальные" для этого региона.
      */
     public synchronized TrapBlockData registerAndGetOriginal(Location location, String regionId, TrapBlockData currentWorldData) {
-        // Если блок уже занят другой трапкой, мы игнорируем currentWorldData (так как это фейк/обсидиан)
-        // и возвращаем то, что сохранила ПЕРВАЯ трапка.
+
+
         if (originalBlockStates.containsKey(location)) {
             activeRegionsOnBlock.computeIfAbsent(location, k -> new HashSet<>()).add(regionId);
             return originalBlockStates.get(location);
         }
 
-        // Если блок чист - сохраняем его как оригинал
         originalBlockStates.put(location, currentWorldData);
         activeRegionsOnBlock.computeIfAbsent(location, k -> new HashSet<>()).add(regionId);
 
@@ -56,17 +53,15 @@ public class GlobalTrapRegistry {
         regions.remove(regionId);
 
         if (regions.isEmpty()) {
-            // Больше никто не держит этот блок. Удаляем из памяти и даем команду на восстановление.
+
             activeRegionsOnBlock.remove(location);
             originalBlockStates.remove(location);
             return true;
         }
 
-        // Блок занят другой трапкой/пластом. Не восстанавливать физически!
         return false;
     }
 
-    // Метод для полной очистки при релоадах
     public synchronized void clearAll() {
         originalBlockStates.clear();
         activeRegionsOnBlock.clear();

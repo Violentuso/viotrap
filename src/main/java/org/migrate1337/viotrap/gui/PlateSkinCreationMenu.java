@@ -60,12 +60,10 @@ public class PlateSkinCreationMenu implements Listener {
                 ColorUtil.format("&#EAD7A2Схематики"),
                 ColorUtil.format("&#AEC1F2 • Кликните, чтобы настроить")));
 
-        // Основной звук
         inventory.setItem(23, createMenuItem(Material.NOTE_BLOCK,
                 ColorUtil.format("&#AEC1F2Звук активации"),
                 ColorUtil.format("&#AEC1F2 • Текущий: ") + plugin.getTempPlateSkinData().getOrDefault("sound.type", "Не задано")));
 
-        // Новый: звук завершения
         inventory.setItem(24, createMenuItem(Material.NOTE_BLOCK,
                 ColorUtil.format("&#E6E6C2Звук завершения"),
                 ColorUtil.format("&#AEC1F2 • Текущий: ") + plugin.getTempPlateSkinData().getOrDefault("sound.type-ended", "Не задано")));
@@ -83,7 +81,6 @@ public class PlateSkinCreationMenu implements Listener {
                 ColorUtil.format("&#AEC1F2 • Кликните, чтобы сохранить")));
     }
 
-    // ==================== СХЕМАТИКИ ====================
     private void openSchematicsMenu(Player player) {
         Inventory inv = Bukkit.createInventory(null, 54, "Схематики пласта");
         currentSubMenu.put(player, "schematics");
@@ -137,7 +134,6 @@ public class PlateSkinCreationMenu implements Listener {
 
         String sub = currentSubMenu.getOrDefault(player, "");
 
-        // Главное меню
         if (title.equals("Создание скина для пласта") && sub.isEmpty()) {
             int slot = event.getSlot();
             if (slot == 19) handleInput(player, "name", "Введите название скина:");
@@ -149,7 +145,6 @@ public class PlateSkinCreationMenu implements Listener {
             else if (slot == 31) saveSkin(player);
         }
 
-        // Схематики
         else if (sub.equals("schematics")) {
             int slot = event.getSlot();
             if (slot == 19) handleInput(player, "forward_schematic", "Введите forward schematic:");
@@ -168,7 +163,6 @@ public class PlateSkinCreationMenu implements Listener {
             }
         }
     }
-
     private void handleInput(Player player, String field, String message) {
         player.closeInventory();
         player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] " + message));
@@ -189,7 +183,6 @@ public class PlateSkinCreationMenu implements Listener {
     private void saveSkin(Player player) {
         Map<String, String> data = plugin.getTempPlateSkinData();
 
-        // Проверка обязательных полей
         if (data.get("name") == null ||
                 data.get("sound.type") == null ||
                 data.get("cooldown") == null ||
@@ -209,13 +202,11 @@ public class PlateSkinCreationMenu implements Listener {
             plugin.getConfig().set("plate_skins." + name + "." + k + "_schematic", data.get(k + "_schematic"));
         }
 
-        // Основной звук
         plugin.getConfig().set("plate_skins." + name + ".sound.type", data.get("sound.type"));
         plugin.getConfig().set("plate_skins." + name + ".sound.volume", 1.0F);
         plugin.getConfig().set("plate_skins." + name + ".sound.pitch", 1.0F);
 
-        // Звук завершения (новое)
-        String endedSound = data.getOrDefault("sound.type-ended", "ENTITY_GENERIC_EXPLODE"); // значение по умолчанию, если не задано
+        String endedSound = data.getOrDefault("sound.type-ended", "ENTITY_GENERIC_EXPLODE");
         plugin.getConfig().set("plate_skins." + name + ".sound.type-ended", endedSound);
         plugin.getConfig().set("plate_skins." + name + ".sound.volume-ended", 1.0F);
         plugin.getConfig().set("plate_skins." + name + ".sound.pitch-ended", 1.0F);

@@ -56,13 +56,11 @@ public class SkinCreationMenu implements Listener {
     private void updateMainMenuItems(Inventory inv) {
         inv.clear();
 
-        // Заполнение фона (стекло)
         int[] glassSlots = {0,1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,44,45,46,47,48,49,50,51,52,53};
         for (int slot : glassSlots) {
             inv.setItem(slot, createMenuItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " "));
         }
 
-        // Основные элементы
         inv.setItem(19, createMenuItem(Material.PAPER,
                 ColorUtil.format("&#CCCAF0Название скина"),
                 ColorUtil.format("&#AEC1F2 • Текущее: ") + plugin.getTempSkinData().getOrDefault("name", "Не задано")));
@@ -176,7 +174,6 @@ public class SkinCreationMenu implements Listener {
             String type = parts[0].toLowerCase();
             String display;
 
-            // Заменяем switch-выражение на обычный switch
             switch (type) {
                 case "effect":
                     display = "Эффект: " + (parts.length > 1 ? parts[1] : "?");
@@ -425,7 +422,7 @@ public class SkinCreationMenu implements Listener {
         player.closeInventory();
         player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#FB654E" + message));
         this.plugin.getChatInputHandler().waitForInput(player, (input) -> {
-             if (key.equals("cooldown")) {
+            if (key.equals("cooldown")) {
                 try {
                     int cooldown = Integer.parseInt(input.trim());
                     if (cooldown < 0) {
@@ -521,32 +518,32 @@ public class SkinCreationMenu implements Listener {
 
                     actions.put(actionKey, "particlehitbox;" + String.join(";", parts));
                 }  else if (actionType.equals("cooldownitem")) {
-                 String[] parts = input.split(" ", 3);
-                 if (parts.length != 3 || !isValidTarget(parts[0])) {
-                     player.sendMessage("§cНекорректный формат. Ожидается: <p/o/rp> <предмет1,предмет2,...> <секунды>");
-                     Bukkit.getScheduler().runTask(plugin, () -> openActionsMenu(player));
-                     return;
-                 }
+                    String[] parts = input.split(" ", 3);
+                    if (parts.length != 3 || !isValidTarget(parts[0])) {
+                        player.sendMessage("§cНекорректный формат. Ожидается: <p/o/rp> <предмет1,предмет2,...> <секунды>");
+                        Bukkit.getScheduler().runTask(plugin, () -> openActionsMenu(player));
+                        return;
+                    }
 
-                 try {
-                     Integer.parseInt(parts[2]);
-                 } catch (NumberFormatException e) {
-                     player.sendMessage("§cКоличество секунд — целое число!");
-                     Bukkit.getScheduler().runTask(plugin, () -> openActionsMenu(player));
-                     return;
-                 }
+                    try {
+                        Integer.parseInt(parts[2]);
+                    } catch (NumberFormatException e) {
+                        player.sendMessage("§cКоличество секунд — целое число!");
+                        Bukkit.getScheduler().runTask(plugin, () -> openActionsMenu(player));
+                        return;
+                    }
 
-                 actions.put(actionKey, "cooldownitem;" + String.join(";", parts));
-             } else if (actionType.equals("denyitemuse")) {
-                 String[] parts = input.split(" ", 2);
-                 if (parts.length != 2 || !isValidTarget(parts[0])) {
-                     player.sendMessage("§cНекорректный формат. Ожидается: <p/o/rp> <предмет1,предмет2,...>");
-                     Bukkit.getScheduler().runTask(plugin, () -> openActionsMenu(player));
-                     return;
-                 }
+                    actions.put(actionKey, "cooldownitem;" + String.join(";", parts));
+                } else if (actionType.equals("denyitemuse")) {
+                    String[] parts = input.split(" ", 2);
+                    if (parts.length != 2 || !isValidTarget(parts[0])) {
+                        player.sendMessage("§cНекорректный формат. Ожидается: <p/o/rp> <предмет1,предмет2,...>");
+                        Bukkit.getScheduler().runTask(plugin, () -> openActionsMenu(player));
+                        return;
+                    }
 
-                 actions.put(actionKey, "denyitemuse;" + String.join(";", parts));
-             }
+                    actions.put(actionKey, "denyitemuse;" + String.join(";", parts));
+                }
 
 
                 this.plugin.getTempSkinData().put("actions", this.serializeActions(actions));
@@ -760,14 +757,14 @@ public class SkinCreationMenu implements Listener {
         List<String> descriptionLines = this.getDescriptionLines();
 
         if (skinName != null && schematic != null && sound != null && cooldown != null && duration != null) {
-            // 1. Обработка цветов (Амперсанты)
+
 
             List<String> coloredDesc = new ArrayList<>();
             for (String line : descriptionLines) {
                 coloredDesc.add(ChatColor.translateAlternateColorCodes('&', line));
             }
 
-            // 2. Сохранение основных данных
+
             this.plugin.getConfig().set("skins." + skinName + ".schem", schematic);
             this.plugin.getConfig().set("skins." + skinName + ".sound.type", sound);
             this.plugin.getConfig().set("skins." + skinName + ".sound.volume", 1.0F);
@@ -784,7 +781,7 @@ public class SkinCreationMenu implements Listener {
                 return;
             }
 
-            // 3. Сохранение Actions (исправленная логика)
+
             Map<String, String> actions = this.parseActions((String)this.plugin.getTempSkinData().getOrDefault("actions", ""));
             this.plugin.getConfig().set("skins." + skinName + ".actions", null); // Очистка старого
 
@@ -802,7 +799,6 @@ public class SkinCreationMenu implements Listener {
 
                     switch (type.toLowerCase()) {
                         case "effect":
-                            // effect;target;effectName;amplifier;duration
                             if (parts.length >= 5) {
                                 this.plugin.getConfig().set(basePath + ".target", parts[1]);
                                 this.plugin.getConfig().set(basePath + ".effect", parts[2]);
@@ -814,14 +810,14 @@ public class SkinCreationMenu implements Listener {
                             }
                             break;
                         case "command":
-                            // command;cmdString;target
+
                             if (parts.length >= 3) {
                                 this.plugin.getConfig().set(basePath + ".command", parts[1]);
                                 this.plugin.getConfig().set(basePath + ".target", parts[2]);
                             }
                             break;
                         case "teleportout":
-                            // teleportout;target;blocks;up
+
                             if (parts.length >= 3) {
                                 this.plugin.getConfig().set(basePath + ".target", parts[1]);
                                 try {
@@ -830,7 +826,7 @@ public class SkinCreationMenu implements Listener {
                             }
                             break;
                         case "particlehitbox":
-                            // particlehitbox;target;particle;duration
+
                             if (parts.length >= 4) {
                                 this.plugin.getConfig().set(basePath + ".target", parts[1]);
                                 this.plugin.getConfig().set(basePath + ".particle", parts[2]);
@@ -859,12 +855,12 @@ public class SkinCreationMenu implements Listener {
                 }
             }
 
-            // 4. Сохранение Флагов
+
             Map<String, String> flags = this.parseFlags((String)this.plugin.getTempSkinData().getOrDefault("flags", ""));
-            this.plugin.getConfig().set("skins." + skinName + ".flags", null); // Очистка старых флагов
+            this.plugin.getConfig().set("skins." + skinName + ".flags", null);
 
             for(Map.Entry<String, String> flagEntry : flags.entrySet()) {
-                String flagValueRaw = (String)flagEntry.getValue(); // Например "TNT:DENY"
+                String flagValueRaw = (String)flagEntry.getValue();
                 if (flagValueRaw != null) {
                     String[] parts = flagValueRaw.split(":", 2);
                     if (parts.length == 2) {

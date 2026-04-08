@@ -98,13 +98,26 @@ public class TrapItemListener implements Listener {
         this.loadTrapsFromConfig();
         this.loadCooldownsFromConfig();
     }
+    public File getSchematicFile(String fileName) {
 
+        File worldEditFile = new File("plugins/WorldEdit/schematics/" + fileName);
+        if (worldEditFile.exists()) return worldEditFile;
+
+        if (Bukkit.getPluginManager().getPlugin("FastAsyncWorldEdit") != null) {
+            File faweFile1 = new File("plugins/FastAsyncWorldEdit/schematics/" + fileName);
+            if (faweFile1.exists()) return faweFile1;
+
+        }
+        return worldEditFile;
+    }
     @EventHandler
     public void onPlayerUseTrap(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item != null && TrapItem.isTrapItem(item)) {
-
+            if (item == null || item.getType().isAir() || item.getAmount() <= 0) {
+                return;
+            }
             if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
                 if (!plugin.getConditionManager().checkConditions(player, "trap")) {
                     return;
@@ -114,12 +127,13 @@ public class TrapItemListener implements Listener {
                 if (skin == null || skin.isEmpty()) {
                     skin = "default";
                 }
+                Material itemType = item.getType();
                 if (!player.hasCooldown(item.getType()) && !this.isCooldownActive(player.getUniqueId(), skin)) {
                     String schematic = this.plugin.getSkinSchematic(skin);
                     if (schematic != null && (this.plugin.getConfig().contains("skins." + skin) || skin.equals("default"))) {
                         if (!this.isInBannedRegion(location, location.getWorld().getName()) && !this.hasBannedRegionFlags(location, location.getWorld().getName())) {
                             if(true) {
-                                File schematicFile = new File("plugins/WorldEdit/schematics/" + schematic);
+                                File schematicFile = getSchematicFile(schematic);
                                 if (!schematicFile.exists()) {
                                     player.sendMessage("§cСхематика " + schematic + " не найдена!");
                                 } else {
@@ -132,38 +146,40 @@ public class TrapItemListener implements Listener {
                                             double sizeY = (double) (max.getBlockY() - min.getBlockY() + 1);
                                             double sizeZ = (double) (max.getBlockZ() - min.getBlockZ() + 1);
 
+                                            int cooldownSeconds = (int) (skin.equals("default") ? (double) this.plugin.getTrapCooldown() : this.plugin.getConfig().getInt("skins." + skin + ".cooldown", (int) this.plugin.getTrapCooldown()));
+                                            int cooldownTicks = cooldownSeconds * 20;
+                                            player.setCooldown(itemType, cooldownTicks);
+
                                             int originalAmount = item.getAmount();
                                             item.setAmount(originalAmount - 1);
 
+
                                             BukkitScheduler scheduler = Bukkit.getScheduler();
                                             scheduler.runTaskLater(this.plugin, player::updateInventory, 1L);
-                                            int cooldownSeconds = (int) (skin.equals("default") ? (double) this.plugin.getTrapCooldown() : this.plugin.getConfig().getInt("skins." + skin + ".cooldown", (int) this.plugin.getTrapCooldown()));
-                                            int cooldownTicks = cooldownSeconds * 20;
-                                            player.setCooldown(item.getType(), cooldownTicks);
-                                            this.saveCooldownToConfig(player.getUniqueId(), item.getType(), System.currentTimeMillis() + (long) (cooldownTicks * 50));
-                                            if (this.plugin.getConfig().getString("trap.enable-pvp", "true").equals("true")) {
+                                            this.saveCooldownToConfig(player.getUniqueId(), itemType, System.currentTimeMillis() + (long) (cooldownTicks * 50));
+                                            if (this.plugin.getConfig().getBoolean("trap.enable-pvp")) {
                                                 enablePvpForPlayer(player);
                                             }
 
                                             String soundType = skin.equals("default") ? this.plugin.getTrapSoundType() : this.plugin.getConfig().getString("skins." + skin + ".sound.type", this.plugin.getTrapSoundType());
                                             float soundVolume = (float) (skin.equals("default") ? (double) this.plugin.getTrapSoundVolume() : this.plugin.getConfig().getDouble("skins." + skin + ".sound.volume", (double) this.plugin.getTrapSoundVolume()));
                                             float soundPitch = (float) (skin.equals("default") ? (double) this.plugin.getTrapSoundPitch() : this.plugin.getConfig().getDouble("skins." + skin + ".sound.pitch", (double) this.plugin.getTrapSoundPitch()));
-                                            player.playSound(location, Sound.valueOf(soundType), soundVolume, soundPitch);
                                             this.applyEffects(player, "skins." + skin + ".effects.player");
                                             player.sendMessage(this.plugin.getConfig().getString("trap.messages.success_used"));
                                             List<CustomAction> actions = CustomActionFactory.loadActions(skin, plugin);
                                             this.skinActions.put(skin, actions);
                                             Player[] opponents = location.getWorld().getNearbyEntities(location, sizeX - (double) 3.0F, sizeY, sizeZ - (double) 3.0F, (entity) -> entity instanceof Player && !entity.equals(player)).stream().filter((entity) -> entity instanceof Player).toArray(Player[]::new);
-
+                                            location.getWorld().playSound(location, Sound.valueOf(soundType), soundVolume, soundPitch);
                                             for (CustomAction action : actions) {
                                                 action.execute(player, opponents, this.plugin);
                                             }
 
                                             for (Player opponent : opponents) {
-                                                this.enablePvpForPlayer(opponent);
+                                                if (this.plugin.getConfig().getBoolean("trap.enable-pvp")) {
+                                                    enablePvpForPlayer(player);
+                                                }
                                             }
 
-                                            // Генерируем ID
                                             String trapId = player.getName() + "_trap_" + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
 
                                             this.saveTrapToConfig(player, location, skin);
@@ -174,7 +190,6 @@ public class TrapItemListener implements Listener {
                                             try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(location.getWorld()))) {
                                                 BlockVector3 pastePosition = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
 
-                                                // ! ВАЖНО: Сохраняем блоки через реестр, передавая trapId
                                                 this.saveReplacedBlocks(player.getUniqueId(), location, clipboard, trapId);
 
                                                 ClipboardHolder holder = new ClipboardHolder(clipboard);
@@ -193,7 +208,6 @@ public class TrapItemListener implements Listener {
                                                 Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
                                                     TrapData data = this.activeTrapTimers.get(trapId);
                                                     if (data != null) {
-                                                        // ! ВАЖНО: Восстановление через реестр
                                                         this.restoreBlocks(data.getPlayerId(), trapId);
 
                                                         this.removeTrapRegion(trapId, data.getLocation());
@@ -291,7 +305,9 @@ public class TrapItemListener implements Listener {
 
         if (!wasInTrapRegion && isNowInTrapRegion) {
             if (this.playersInTrapRegions.add(player.getUniqueId())) {
-                this.enablePvpForPlayer(player);
+                if (this.plugin.getConfig().getBoolean("trap.enable-pvp")) {
+                    enablePvpForPlayer(player);
+                }
                 DenyItemUseCustomAction.applyForPlayer(player.getUniqueId());
             }
         } else if (wasInTrapRegion && !isNowInTrapRegion) {
@@ -516,9 +532,8 @@ public class TrapItemListener implements Listener {
         }
     }
 
-    // ------------------------------------------------------------------------------------------------
-    // ВАЖНО: Новая логика сохранения через GlobalTrapRegistry
-    // ------------------------------------------------------------------------------------------------
+
+
     private void saveReplacedBlocks(UUID playerId, Location center, Clipboard clipboard, String regionId) {
         Map<Location, TrapBlockData> replacedBlocks = this.playerReplacedBlocks.computeIfAbsent(playerId, k -> new HashMap<>());
 
@@ -545,8 +560,7 @@ public class TrapItemListener implements Listener {
                             Math.floor(center.getY() + (double) (y - min.getBlockY() + offsetY)),
                             Math.floor(center.getZ() + (double) (z - min.getBlockZ() + offsetZ)));
 
-                    // Блоки воздуха в схематике не должны трогать реальный мир, если схематика их не ставит.
-                    // Но тут мы считываем ВЕСЬ регион, который покроет схематика.
+
 
                     Block block = loc.getBlock();
                     BlockState state = block.getState();
@@ -594,8 +608,7 @@ public class TrapItemListener implements Listener {
                         currentWorldData.setPairedChestLocation(pairedLocation);
                     }
 
-                    // --- МАГИЯ РЕЕСТРА ---
-                    // Получаем данные, которые ДОЛЖНЫ быть сохранены (оригинал, если занято, или текущий, если свободно)
+
                     TrapBlockData finalDataToSave = GlobalTrapRegistry.getInstance().registerAndGetOriginal(loc, regionId, currentWorldData);
 
                     replacedBlocks.put(loc.clone(), finalDataToSave);
@@ -609,7 +622,6 @@ public class TrapItemListener implements Listener {
             this.loadTrapsFromConfig();
         }
 
-        // Очистка всех трапок и реестра
         this.activeTraps.clear();
         this.playersInTrapRegions.clear();
         this.activeTrapTimers.clear();
@@ -622,9 +634,8 @@ public class TrapItemListener implements Listener {
         this.playersInTrapRegions.remove(playerId);
     }
 
-    // ------------------------------------------------------------------------------------------------
-    // ВАЖНО: Новая логика восстановления через GlobalTrapRegistry
-    // ------------------------------------------------------------------------------------------------
+
+
     private void restoreBlocks(UUID playerId, String regionId) {
         Map<Location, TrapBlockData> replacedBlocks = this.playerReplacedBlocks.get(playerId);
         if (replacedBlocks == null || replacedBlocks.isEmpty()) {
@@ -638,17 +649,15 @@ public class TrapItemListener implements Listener {
             Location location = entry.getKey();
             TrapBlockData blockData = entry.getValue();
 
-            // Проверяем в реестре, можно ли восстанавливать
             boolean shouldRestore = GlobalTrapRegistry.getInstance().unregister(location, regionId);
 
             if (!shouldRestore) {
-                // Блок используется кем-то другим. Просто удаляем запись у себя и идем дальше.
+
                 this.removeTrapFromFile(location);
                 iterator.remove();
                 continue;
             }
 
-            // Восстанавливаем физически
             Block block = location.getBlock();
             block.setType(blockData.getMaterial());
             block.setBlockData(blockData.getBlockData());
@@ -709,10 +718,9 @@ public class TrapItemListener implements Listener {
                             String skin = trapSection.getString("skin", "default");
                             Location location = new Location(Bukkit.getWorld(world), (double) x, (double) y, (double) z);
 
-                            // Воссоздаем ID для корректной работы реестра
-                            // ВАЖНО: Тут мы не знаем имя игрока, если он оффлайн, но для уникальности trapKey обычно хватает
-                            // Лучше использовать конструкцию как при создании, но у нас нет Player name.
-                            // Используем playerId в качестве заменителя имени для ID при загрузке, или пытаемся получить имя.
+
+
+
                             String playerName = Bukkit.getOfflinePlayer(playerId).getName();
                             if(playerName == null) playerName = "Unknown";
                             String trapId = playerName + "_trap_" + x + "_" + y + "_" + z;
@@ -723,13 +731,13 @@ public class TrapItemListener implements Listener {
                                 long remainingTicks = (endTime - currentTime) / 50L;
 
                                 if (remainingTicks <= 0L) {
-                                    // Время вышло в оффлайне - нужно восстановить (но мы не можем без реестра,
-                                    // так что просто чистим конфиг, блоки останутся как есть или восстановятся если данные есть)
-                                    // В идеале тут нужен сложный механизм восстановления из файла, если бы он был.
+
+
+
                                     this.removeTrapRegion(trapId, location);
                                     this.removeTrapFromFile(location);
                                 } else {
-                                    // Трапка активна. Нам нужно "захватить" блоки в реестр, чтобы новые трапки знали о ней.
+
                                     String schematic = this.plugin.getSkinSchematic(skin);
                                     if (schematic != null) {
                                         try {
@@ -737,10 +745,9 @@ public class TrapItemListener implements Listener {
                                             if (schematicFile.exists()) {
                                                 try (ClipboardReader reader = ClipboardFormats.findByFile(schematicFile).getReader(new FileInputStream(schematicFile))) {
                                                     Clipboard clipboard = reader.read();
-                                                    // Сохраняем блоки в реестр. Т.к. это загрузка, мы считаем текущее состояние мира "занятым".
+
                                                     this.saveReplacedBlocks(playerId, location, clipboard, trapId);
 
-                                                    // Пересоздаем регион
                                                     BlockVector3 min = clipboard.getRegion().getMinimumPoint();
                                                     BlockVector3 max = clipboard.getRegion().getMaximumPoint();
                                                     double sizeX = (double)(max.getBlockX() - min.getBlockX() + 1);
@@ -782,14 +789,11 @@ public class TrapItemListener implements Listener {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(location.getWorld()));
         String playerName = player != null ? player.getName() : "offline";
-        // Пытаемся восстановить ID если игрок оффлайн, но это сложно.
-        // Здесь используется логика создания. При загрузке выше мы пытались угадать ID.
         String trapId = playerName + "_trap_" + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
 
         BlockVector3 min = BlockVector3.at((double) location.getBlockX() - sizeX / (double) 2.0F, (double) location.getBlockY() - sizeY / (double) 2.0F + (double) 2.0F, (double) location.getBlockZ() - sizeZ / (double) 2.0F);
         BlockVector3 max = BlockVector3.at((double) location.getBlockX() + sizeX / (double) 2.0F, (double) location.getBlockY() + sizeY / (double) 2.0F + (double) 1.0F, (double) location.getBlockZ() + sizeZ / (double) 2.0F);
 
-        // Корректировка высоты (из вашего кода)
         if (sizeX == 5.0) {
             min = BlockVector3.at(location.getX() - sizeX / 2.0, location.getY() - sizeY / 2.0 + 2.0, location.getZ() - sizeZ / 2.0);
             max = BlockVector3.at(location.getX() + sizeX / 2.0, location.getY() + sizeY / 2.0 + 1.0, location.getZ() + sizeZ / 2.0);

@@ -9,11 +9,13 @@ import org.migrate1337.viotrap.VioTrap;
 
 public class DivineAuraItem {
     public static ItemStack getDivineAuraItem(int amount, VioTrap plugin) {
+        if (amount <= 0) return new ItemStack(Material.AIR);
         Material material = plugin.getDivineAuraItemMaterial();
         String itemName = plugin.getDivineAuraItemName();
         List<String> itemDescription = plugin.getDivineAuraItemDescription();
         ItemStack item = new ItemStack(material, amount);
         ItemMeta meta = item.getItemMeta();
+
         if (meta != null) {
             String var10001 = String.valueOf(ChatColor.GREEN);
             meta.setDisplayName(var10001 + itemName);

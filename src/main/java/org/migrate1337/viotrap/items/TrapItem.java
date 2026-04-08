@@ -14,7 +14,9 @@ public class TrapItem {
     private static final String DEFAULT_TRAP_ID = "default_trap";
 
     public static ItemStack getTrapItem(int amount, String skin) {
+        if (amount <= 0) return new ItemStack(Material.AIR);
         ItemStack item = new ItemStack(Material.getMaterial(VioTrap.getPlugin().getTrapType()), amount);
+
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(VioTrap.getPlugin().getTrapDisplayName());

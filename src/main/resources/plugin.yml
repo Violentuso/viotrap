@@ -9,3 +9,4 @@ softdepend:
   - PvPManager
 commands:
   viotrap:
+  genschem:

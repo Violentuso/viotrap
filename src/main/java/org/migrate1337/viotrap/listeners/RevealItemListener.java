@@ -45,7 +45,9 @@ public class RevealItemListener implements Listener {
         Player player = event.getPlayer();
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item != null && item.isSimilar(RevealItem.getRevealItem(item.getAmount()))) {
-
+            if (item == null || item.getType().isAir() || item.getAmount() <= 0) {
+                return;
+            }
             if (event.getAction().toString().contains("RIGHT_CLICK")) {
                 if (!plugin.getConditionManager().checkConditions(player, "reveal_item")) {
                     return;
@@ -53,20 +55,21 @@ public class RevealItemListener implements Listener {
                 if (player.hasCooldown(item.getType())) {
                     player.sendMessage("§cПодождите перед использованием снова!");
                 } else {
-
+                    int cooldownSeconds = this.plugin.getRevealItemCooldown();
+                    player.setCooldown(item.getType(), cooldownSeconds * 20);
                     item.setAmount(item.getAmount() - 1);
                     player.sendMessage(this.plugin.getConfig().getString("reveal_item.messages.success_used"));
                     Location location = player.getLocation();
                     String worldName = location.getWorld().getName();
                     if (!this.isInBannedRegion(location, location.getWorld().getName()) && !this.hasBannedRegionFlags(location, location.getWorld().getName())) {
-                        int cooldownSeconds = this.plugin.getRevealItemCooldown();
+
                         int durationSeconds = this.plugin.getRevealItemGlowDuration();
-                        player.setCooldown(item.getType(), cooldownSeconds * 20);
+
                         int radius = this.plugin.getRevealItemRadius();
                         Location playerLocation = player.getLocation();
                         boolean foundOpponent = false;
 
-                        for(Player nearbyPlayer : Bukkit.getOnlinePlayers()) {
+                        for (Player nearbyPlayer : playerLocation.getWorld().getPlayers()) {
                             if (!nearbyPlayer.equals(player) && nearbyPlayer.getLocation().distance(playerLocation) <= (double)radius) {
                                 foundOpponent = true;
                                 if (this.combatLogXHandler.isCombatLogXEnabled()) {
@@ -94,12 +97,11 @@ public class RevealItemListener implements Listener {
                                     new BukkitRunnable() {
                                         @Override
                                         public void run() {
-                                            // Если игрок ещё онлайн и жив
+
                                             if (nearbyPlayer != null && nearbyPlayer.isOnline() && !nearbyPlayer.isDead()) {
 
-                                                // Если нужно — можно проверить, что время положительное
                                                 if (finalRemainingInvisibilityTime > 0) {
-                                                    // Вернуть невидимость игроку на оставшееся время
+
                                                     nearbyPlayer.addPotionEffect(
                                                             new PotionEffect(PotionEffectType.INVISIBILITY, finalRemainingInvisibilityTime, 0, true, false)
                                                     );
@@ -114,7 +116,9 @@ public class RevealItemListener implements Listener {
 
                         if (this.combatLogXHandler.isCombatLogXEnabled() && foundOpponent) {
                             this.combatLogXHandler.tagPlayer(player, TagType.DAMAGE, TagReason.UNKNOWN);
-                            player.sendMessage(this.plugin.getConfig().getString("reveal_item.messages.pvp-enabled-by-player"));
+                            if(this.plugin.getConfig().getString("reveal_item.messages.pvp-enabled-by-player") != "") {
+                                player.sendMessage(this.plugin.getConfig().getString("reveal_item.messages.pvp-enabled-by-player"));
+                            }
                         }
 
                         if (this.pvpManagerHandler.isPvPManagerEnabled() && foundOpponent) {

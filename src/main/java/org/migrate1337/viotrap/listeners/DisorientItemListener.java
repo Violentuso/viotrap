@@ -1,7 +1,7 @@
-//
-// Source code recreated from a .class file by IntelliJ IDEA
-// (powered by FernFlower decompiler)
-//
+
+
+
+
 
 package org.migrate1337.viotrap.listeners;
 
@@ -50,6 +50,9 @@ public class DisorientItemListener implements Listener {
         Player player = event.getPlayer();
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item != null && item.isSimilar(DisorientItem.getDisorientItem(item.getAmount()))) {
+            if (item == null || item.getType().isAir() || item.getAmount() <= 0) {
+                return;
+            }
             if (event.getAction().toString().contains("RIGHT_CLICK")) {
                 if (!plugin.getConditionManager().checkConditions(player, "disorient_item")) {
                     return;
@@ -65,7 +68,7 @@ public class DisorientItemListener implements Listener {
                         boolean foundOpponent = false;
                         player.sendMessage(this.plugin.getConfig().getString("disorient_item.messages.success_used"));
 
-                        for(Player nearbyPlayer : Bukkit.getOnlinePlayers()) {
+                        for (Player nearbyPlayer : playerLocation.getWorld().getPlayers()) {
                             if (!nearbyPlayer.equals(player) && nearbyPlayer.getLocation().distance(playerLocation) <= (double)radius) {
                                 foundOpponent = true;
                                 if (this.combatLogXHandler.isCombatLogXEnabled()) {
@@ -102,10 +105,10 @@ public class DisorientItemListener implements Listener {
                             this.pvpManagerHandler.tagPlayerForPvP(player, "disorient_item");
                             player.sendMessage(this.plugin.getConfig().getString("disorient_item.messages.pvp-enabled-by-player"));
                         }
-
-                        item.setAmount(item.getAmount() - 1);
                         int cooldownSeconds = this.plugin.getDisorientItemCooldown();
                         player.setCooldown(item.getType(), cooldownSeconds * 20);
+                        item.setAmount(item.getAmount() - 1);
+
                         String soundType = this.plugin.getDisorientItemSoundType();
                         float volume = this.plugin.getDisorientItemSoundVolume();
                         float pitch = this.plugin.getDisorientItemSoundPitch();

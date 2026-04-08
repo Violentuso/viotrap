@@ -21,7 +21,6 @@ public class VioTrapCommand implements CommandExecutor, TabCompleter {
 
     private final VioTrap plugin;
 
-    // Ссылки на исполнителей подкоманд
     private final GiveItemCommand giveItemCommand;
     private final CreateSkinCommand createSkinCommand;
     private final CreatePlateSkinCommand createPlateSkinCommand;
@@ -29,22 +28,18 @@ public class VioTrapCommand implements CommandExecutor, TabCompleter {
     private final ApplyPlateSkinCommand applyPlateSkinCommand;
     private final SkinPointsCommand skinPointsCommand;
 
-    // Ссылки на таб-комплитеры (если есть отдельные)
     private final GiveItemTabCompleter giveItemTabCompleter;
 
     public VioTrapCommand(VioTrap plugin,
                           SkinPointsManager pointsManager,
                           ActiveSkinsManager activeSkinsManager) {
         this.plugin = plugin;
-
-        // Инициализируем логику всех команд
         this.giveItemCommand = new GiveItemCommand(plugin, activeSkinsManager);
         this.createSkinCommand = new CreateSkinCommand(plugin);
         this.createPlateSkinCommand = new CreatePlateSkinCommand(plugin);
         this.applySkinCommand = new ApplySkinCommand(plugin, pointsManager, activeSkinsManager);
         this.applyPlateSkinCommand = new ApplyPlateSkinCommand(plugin, pointsManager, activeSkinsManager);
         this.skinPointsCommand = new SkinPointsCommand(plugin, pointsManager);
-
         this.giveItemTabCompleter = new GiveItemTabCompleter();
     }
 
@@ -76,9 +71,18 @@ public class VioTrapCommand implements CommandExecutor, TabCompleter {
                 return applyPlateSkinCommand.onCommand(sender, command, label, subArgs);
             case "skinpoints":
                 return skinPointsCommand.onCommand(sender, command, label, subArgs);
+            case "reload":
+                if (!sender.hasPermission("viotrap.reload")) {
+                    sender.sendMessage("§cУ вас нет прав на reload.");
+                    return true;
+                }
+                plugin.reloadVioTrapConfig();
+                sender.sendMessage("§aКонфиг перезагружен! Все изменения применены.");
+                return true;
             case "conditions":
                 plugin.getConditionEditorMenu().openMainMenu((Player) sender);
                 return true;
+
             default:
                 sender.sendMessage("§cНеизвестная подкоманда. Используйте /viotrap info для помощи.");
                 return true;
@@ -98,6 +102,7 @@ public class VioTrapCommand implements CommandExecutor, TabCompleter {
         sendHelpLine(sender, "applyskin <player> <skin>", "Применить скин ловушки игроку");
         sendHelpLine(sender, "applyplateskin <player> <skin>", "Применить скин пласта игроку");
         sendHelpLine(sender, "conditions", "Настройка условий");
+        sendHelpLine(sender, "reload", "Перезагрузка конфига");
         sendHelpLine(sender, "skinpoints <add/remove> ...", "Управление очками скинов");
         sender.sendMessage(" ");
         sender.sendMessage("§7Плагин разработан: §x§5§5§F§F§5§5@etern4al1en");

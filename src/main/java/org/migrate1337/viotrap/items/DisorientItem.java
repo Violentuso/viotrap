@@ -8,8 +8,10 @@ import org.migrate1337.viotrap.VioTrap;
 
 public class DisorientItem {
     public static ItemStack getDisorientItem(int amount) {
+        if (amount <= 0) return new ItemStack(Material.AIR);
         ItemStack item = new ItemStack(Material.valueOf(VioTrap.getPlugin().getDisorientItemType()), amount);
         ItemMeta meta = item.getItemMeta();
+
         if (meta != null) {
             meta.setDisplayName(VioTrap.getPlugin().getDisorientItemName());
             List<String> itemDescription = VioTrap.getPlugin().getDisorientItemDescription();

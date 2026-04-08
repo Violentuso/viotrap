@@ -81,7 +81,6 @@ public class DenyItemUseCustomAction implements CustomAction, Listener {
 
     }
 
-    // В DenyItemUseCustomAction.java
     public static void clearForPlayer(UUID uuid) {
         if (trapDeniedItems.containsKey(uuid)) {
 
@@ -91,7 +90,6 @@ public class DenyItemUseCustomAction implements CustomAction, Listener {
         }
     }
 
-    // Метод onConsume (для Золотого Яблока)
     @EventHandler(ignoreCancelled = true)
     public void onConsume(PlayerItemConsumeEvent e) {
         Player player = e.getPlayer();

@@ -14,8 +14,10 @@ public class PlateItem {
     private static final String STATIC_ITEM_ID = "static_plate_item_id";
 
     public static ItemStack getPlateItem(int amount, String skin) {
+        if (amount <= 0) return new ItemStack(Material.AIR);
         ItemStack item = new ItemStack(Material.valueOf(VioTrap.getPlugin().getPlateType()), amount);
         ItemMeta meta = item.getItemMeta();
+
         if (meta != null) {
             meta.setDisplayName(VioTrap.getPlugin().getPlateDisplayName());
             List<String> lore = VioTrap.getPlugin().getPlateDescription();

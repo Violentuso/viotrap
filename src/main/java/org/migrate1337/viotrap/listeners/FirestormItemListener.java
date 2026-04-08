@@ -42,6 +42,9 @@ public class FirestormItemListener implements Listener {
         Player player = event.getPlayer();
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item != null && item.isSimilar(FirestormItem.getFirestormItem(item.getAmount(), this.plugin))) {
+            if (item == null || item.getType().isAir() || item.getAmount() <= 0) {
+                return;
+            }
             if (event.getAction().toString().contains("RIGHT_CLICK")) {
                 if (!plugin.getConditionManager().checkConditions(player, "firestorm_item")) {
                     return;
@@ -57,7 +60,7 @@ public class FirestormItemListener implements Listener {
                         Location playerLocation = player.getLocation();
                         boolean foundOpponent = false;
 
-                        for(Player nearbyPlayer : Bukkit.getOnlinePlayers()) {
+                        for (Player nearbyPlayer : playerLocation.getWorld().getPlayers()) {
                             if (!nearbyPlayer.equals(player) && nearbyPlayer.getLocation().distance(playerLocation) <= (double)radius) {
                                 foundOpponent = true;
                                 if (this.combatLogXHandler.isCombatLogXEnabled()) {
@@ -83,10 +86,10 @@ public class FirestormItemListener implements Listener {
                             this.pvpManagerHandler.tagPlayerForPvP(player, "firestorm_item");
                             player.sendMessage(this.plugin.getConfig().getString("firestorm_item.messages.pvp-enabled-by-player"));
                         }
-
-                        item.setAmount(item.getAmount() - 1);
                         int cooldownSeconds = this.plugin.getFirestormItemCooldown();
                         player.setCooldown(item.getType(), cooldownSeconds * 20);
+                        item.setAmount(item.getAmount() - 1);
+
                         String soundType = this.plugin.getFirestormItemSoundType();
                         float volume = this.plugin.getFirestormItemSoundVolume();
                         float pitch = this.plugin.getFirestormItemSoundPitch();

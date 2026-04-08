@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/VioTrap.iml" filepath="$PROJECT_DIR$/VioTrap.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/VioTrap.iml" filepath="$PROJECT_DIR$/.idea/VioTrap.iml" />
     </modules>
   </component>
 </project>

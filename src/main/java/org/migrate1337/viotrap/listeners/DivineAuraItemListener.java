@@ -2,6 +2,7 @@ package org.migrate1337.viotrap.listeners;
 
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.math.BlockVector3;
+
 import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.flags.StateFlag;
@@ -37,6 +38,9 @@ public class DivineAuraItemListener implements Listener {
         Player player = event.getPlayer();
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item != null && item.isSimilar(DivineAuraItem.getDivineAuraItem(item.getAmount(), this.plugin))) {
+            if (item == null || item.getType().isAir() || item.getAmount() <= 0) {
+                return;
+            }
             if (event.getAction().toString().contains("RIGHT_CLICK")) {
                 if (!plugin.getConditionManager().checkConditions(player, "divine_aura")) {
                     return; // Условия не выполнены, сообщение уже отправлено менеджером
@@ -47,10 +51,11 @@ public class DivineAuraItemListener implements Listener {
                     Location location = player.getLocation();
                     String worldName = location.getWorld().getName();
                     if (!this.isInBannedRegion(location, location.getWorld().getName()) && !this.hasBannedRegionFlags(location, location.getWorld().getName())) {
-                        item.setAmount(item.getAmount() - 1);
-                        player.sendMessage(this.plugin.getConfig().getString("divine_aura.messages.success_used"));
                         int cooldownSeconds = this.plugin.getDivineAuraItemCooldown();
                         player.setCooldown(item.getType(), cooldownSeconds * 20);
+                        item.setAmount(item.getAmount() - 1);
+                        player.sendMessage(this.plugin.getConfig().getString("divine_aura.messages.success_used"));
+
                         Location playerLocation = player.getLocation();
                         String particleType = this.plugin.getDivineAuraItemParticleType();
                         String soundType = this.plugin.getDivineAuraItemSoundType();

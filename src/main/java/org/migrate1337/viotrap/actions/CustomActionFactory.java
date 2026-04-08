@@ -116,7 +116,7 @@ public class CustomActionFactory {
                 } catch (Exception e) {
                 }
             } else {
-                // Fallback: старый формат - строка в "effect"
+
                 String effectData = actionConfig.getString("effect");
                 if (effectData != null) {
                     String[] parts = effectData.split(" ");
@@ -179,7 +179,7 @@ public class CustomActionFactory {
 
     private static void loadParticleHitboxAction(ConfigurationSection actionConfig, String actionKey, String skinName,
                                                  List<CustomAction> actions, VioTrap plugin) {
-        // Новый формат: отдельные ключи
+
         String target = actionConfig.getString("target", "p");
         String particleType = actionConfig.getString("particle-type");
         int duration = actionConfig.getInt("duration");
@@ -192,7 +192,7 @@ public class CustomActionFactory {
             } catch (IllegalArgumentException e) {
             }
         } else {
-            // Fallback: старый формат
+
             String particleData = actionConfig.getString("particle");
             if (particleData != null) {
                 String[] parts = particleData.split(" ");

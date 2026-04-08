@@ -15,7 +15,6 @@ public class GiveItemCommand implements CommandExecutor {
     private final VioTrap plugin;
     private final ActiveSkinsManager activeSkinsManager;
 
-    // Красивый префикс
     private final String PREFIX = "§x§0§0§F§F§7§F§l✦ §x§5§5§F§F§5§5V§x§A§A§F§F§A§Ai§x§F§F§F§F§F§Fo§x§F§F§D§D§F§FT§x§F§F§B§B§F§Fr§x§F§F§9§9§F§Fa§x§F§F§7§7§F§Fp §8| §f";
 
     public GiveItemCommand(VioTrap plugin, ActiveSkinsManager activeSkinsManager) {
@@ -30,7 +29,6 @@ public class GiveItemCommand implements CommandExecutor {
             return true;
         }
 
-        // Так как это вызывается через диспетчер, args[0] это "give"
         if (args.length < 3) {
             sender.sendMessage(PREFIX + "§cИспользование: §f/viotrap give <игрок> <предмет> [кол-во]");
             return true;
