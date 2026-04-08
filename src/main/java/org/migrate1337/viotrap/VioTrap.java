@@ -208,15 +208,12 @@ public final class VioTrap extends JavaPlugin implements Listener {
 
     public void onDisable() {
         if (this.trapItemListener != null) {
-            this.trapItemListener.removeAllTraps();
-        } else {
+            this.trapItemListener.cleanupOnDisable();
         }
 
         if (this.plateItemListener != null) {
-            this.plateItemListener.removeAllPlates();
-        } else {
+            this.plateItemListener.cleanupOnDisable();
         }
-
     }
 
     public SkinCreationMenu getSkinCreationMenu() {
@@ -234,8 +231,6 @@ public final class VioTrap extends JavaPlugin implements Listener {
         }
 
         this.trapsConfig = YamlConfiguration.loadConfiguration(this.trapsFile);
-        this.trapsConfig.set("traps", (Object)null);
-        this.saveTrapsConfig();
     }
 
     public void saveTrapsConfig() {

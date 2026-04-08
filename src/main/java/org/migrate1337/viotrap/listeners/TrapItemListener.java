@@ -69,6 +69,7 @@ import org.migrate1337.viotrap.data.TrapData;
 import org.migrate1337.viotrap.items.PlateItem;
 import org.migrate1337.viotrap.items.TrapItem;
 import org.migrate1337.viotrap.utils.ActiveSkinsManager;
+import org.migrate1337.viotrap.utils.BlockDataSerializer;
 import org.migrate1337.viotrap.utils.CombatLogXHandler;
 import org.migrate1337.viotrap.utils.GlobalTrapRegistry;
 import org.migrate1337.viotrap.utils.PVPManagerHandle;
@@ -182,7 +183,6 @@ public class TrapItemListener implements Listener {
 
                                             String trapId = player.getName() + "_trap_" + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
 
-                                            this.saveTrapToConfig(player, location, skin);
                                             TrapData trapData = new TrapData(player.getUniqueId(), location, skin, (long) this.plugin.getTrapDuration());
                                             this.activeTrapTimers.put(trapId, trapData);
                                             this.createTrapRegion(player, location, sizeX, sizeY, sizeZ, skin);
@@ -191,7 +191,7 @@ public class TrapItemListener implements Listener {
                                                 BlockVector3 pastePosition = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
 
                                                 this.saveReplacedBlocks(player.getUniqueId(), location, clipboard, trapId);
-
+                                                this.saveTrapToConfig(player, location, skin, trapId);
                                                 ClipboardHolder holder = new ClipboardHolder(clipboard);
                                                 Operations.complete(holder.createPaste(editSession).to(pastePosition).build());
 
@@ -434,7 +434,7 @@ public class TrapItemListener implements Listener {
         }
     }
 
-    private void saveTrapToConfig(Player player, Location location, String skin) {
+    private void saveTrapToConfig(Player player, Location location, String skin, String trapId) {
         String path = "traps." + location.getWorld().getName() + "." + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
         this.plugin.getTrapsConfig().set(path + ".player", player.getUniqueId().toString());
         this.plugin.getTrapsConfig().set(path + ".world", location.getWorld().getName());
@@ -443,6 +443,15 @@ public class TrapItemListener implements Listener {
         this.plugin.getTrapsConfig().set(path + ".z", location.getBlockZ());
         this.plugin.getTrapsConfig().set(path + ".skin", skin);
         this.plugin.getTrapsConfig().set(path + ".endTime", System.currentTimeMillis() + (long) (this.plugin.getTrapDuration() * 1000));
+
+        Map<Location, TrapBlockData> blocks = this.playerReplacedBlocks.get(player.getUniqueId());
+        if (blocks != null && !blocks.isEmpty()) {
+            ConfigurationSection section = this.plugin.getTrapsConfig().getConfigurationSection(path);
+            if (section != null) {
+                BlockDataSerializer.saveBlocksToConfig(section, "blocks", blocks);
+            }
+        }
+
         this.plugin.saveTrapsConfig();
     }
 
@@ -552,6 +561,8 @@ public class TrapItemListener implements Listener {
         else if (sizeX == 7) offsetY = (int) (-(sizeY / 2.0F)) + 2;
         else if (sizeX == 9) offsetY = (int) (-(sizeY / 2.0F)) + 2;
 
+        Set<Location> processedDoubleChestPairs = new HashSet<>();
+
         for (int x = min.getBlockX(); x <= max.getBlockX(); x++) {
             for (int y = min.getBlockY(); y <= max.getBlockY(); y++) {
                 for (int z = min.getBlockZ(); z <= max.getBlockZ(); z++) {
@@ -560,13 +571,11 @@ public class TrapItemListener implements Listener {
                             Math.floor(center.getY() + (double) (y - min.getBlockY() + offsetY)),
                             Math.floor(center.getZ() + (double) (z - min.getBlockZ() + offsetZ)));
 
-
-
                     Block block = loc.getBlock();
                     BlockState state = block.getState();
 
                     ItemStack[] contents = null;
-                    String spawnedType = "UNKNOWN";
+                    String spawnedType = null;
                     boolean isDoubleChest = false;
                     Location pairedLocation = null;
 
@@ -583,17 +592,32 @@ public class TrapItemListener implements Listener {
                         if (holder instanceof DoubleChest) {
                             DoubleChest doubleChest = (DoubleChest) holder;
                             isDoubleChest = true;
-                            Inventory combined = doubleChest.getInventory();
-                            contents = combined.getContents() != null ? combined.getContents().clone() : new ItemStack[54];
 
-                            if (doubleChest.getLeftSide() == holder) {
-                                InventoryHolder right = doubleChest.getRightSide();
-                                if (right instanceof Chest) {
-                                    pairedLocation = ((Chest) right).getLocation();
+                            InventoryHolder leftSide = doubleChest.getLeftSide();
+                            InventoryHolder rightSide = doubleChest.getRightSide();
+                            Location leftLoc = (leftSide instanceof Chest) ? ((Chest) leftSide).getLocation() : null;
+                            Location rightLoc = (rightSide instanceof Chest) ? ((Chest) rightSide).getLocation() : null;
+
+                            if (leftLoc != null && leftLoc.getBlockX() == loc.getBlockX()
+                                    && leftLoc.getBlockY() == loc.getBlockY()
+                                    && leftLoc.getBlockZ() == loc.getBlockZ()) {
+                                pairedLocation = rightLoc;
+                            } else {
+                                pairedLocation = leftLoc;
+                            }
+
+                            if (!processedDoubleChestPairs.contains(loc)) {
+                                Inventory combined = doubleChest.getInventory();
+                                contents = combined.getContents() != null ? combined.getContents().clone() : new ItemStack[54];
+                                if (pairedLocation != null) {
+                                    processedDoubleChestPairs.add(pairedLocation);
                                 }
                             }
+
+                            doubleChest.getInventory().clear();
                         } else {
-                            contents = inventory.getContents() != null ? inventory.getContents().clone() : new ItemStack[27];
+                            contents = container.getSnapshotInventory().getContents().clone();
+                            container.getInventory().clear();
                         }
                     }
 
@@ -608,7 +632,6 @@ public class TrapItemListener implements Listener {
                         currentWorldData.setPairedChestLocation(pairedLocation);
                     }
 
-
                     TrapBlockData finalDataToSave = GlobalTrapRegistry.getInstance().registerAndGetOriginal(loc, regionId, currentWorldData);
 
                     replacedBlocks.put(loc.clone(), finalDataToSave);
@@ -622,10 +645,42 @@ public class TrapItemListener implements Listener {
             this.loadTrapsFromConfig();
         }
 
+        for (Map.Entry<String, TrapData> entry : new HashMap<>(this.activeTrapTimers).entrySet()) {
+            String trapId = entry.getKey();
+            TrapData data = entry.getValue();
+            this.restoreBlocks(data.getPlayerId(), trapId);
+            this.removeTrapRegion(trapId, data.getLocation());
+            this.removeTrapFromFile(data.getLocation());
+        }
+
         this.activeTraps.clear();
         this.playersInTrapRegions.clear();
         this.activeTrapTimers.clear();
         GlobalTrapRegistry.getInstance().clearAll();
+    }
+
+    public void cleanupOnDisable() {
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+
+        for (World world : Bukkit.getWorlds()) {
+            RegionManager regionManager = container.get(BukkitAdapter.adapt(world));
+            if (regionManager != null) {
+                List<String> toRemove = new ArrayList<>();
+                for (String regionName : regionManager.getRegions().keySet()) {
+                    if (regionName.contains("_trap_")) {
+                        toRemove.add(regionName);
+                    }
+                }
+                for (String regionName : toRemove) {
+                    regionManager.removeRegion(regionName);
+                }
+            }
+        }
+
+        this.activeTraps.clear();
+        this.playersInTrapRegions.clear();
+        this.activeTrapTimers.clear();
+        this.playerReplacedBlocks.clear();
     }
 
     @EventHandler
@@ -642,57 +697,63 @@ public class TrapItemListener implements Listener {
             return;
         }
 
+        List<Map.Entry<Location, TrapBlockData>> toRestore = new ArrayList<>();
         Iterator<Map.Entry<Location, TrapBlockData>> iterator = replacedBlocks.entrySet().iterator();
 
         while (iterator.hasNext()) {
             Map.Entry<Location, TrapBlockData> entry = iterator.next();
             Location location = entry.getKey();
-            TrapBlockData blockData = entry.getValue();
 
             boolean shouldRestore = GlobalTrapRegistry.getInstance().unregister(location, regionId);
 
             if (!shouldRestore) {
-
-                this.removeTrapFromFile(location);
                 iterator.remove();
                 continue;
             }
+
+            toRestore.add(entry);
+            iterator.remove();
+        }
+
+        for (Map.Entry<Location, TrapBlockData> entry : toRestore) {
+            Location location = entry.getKey();
+            TrapBlockData blockData = entry.getValue();
 
             Block block = location.getBlock();
             block.setType(blockData.getMaterial());
             block.setBlockData(blockData.getBlockData());
 
             BlockState state = block.getState();
-
             if (state instanceof CreatureSpawner) {
-                CreatureSpawner spawner = (CreatureSpawner) state;
                 if (blockData.getSpawnedType() != null && !"UNKNOWN".equals(blockData.getSpawnedType())) {
                     try {
-                        spawner.setSpawnedType(EntityType.valueOf(blockData.getSpawnedType()));
-                        spawner.update();
+                        ((CreatureSpawner) state).setSpawnedType(EntityType.valueOf(blockData.getSpawnedType()));
+                        state.update(true, false);
                     } catch (Exception e) {}
                 }
             }
+        }
 
-            if (state instanceof Container) {
-                Container container = (Container) state;
-                InventoryHolder holder = container.getInventory().getHolder();
+        for (Map.Entry<Location, TrapBlockData> entry : toRestore) {
+            TrapBlockData blockData = entry.getValue();
+            if (blockData.getContents() == null) continue;
 
-                if (blockData.getContents() != null) {
-                    if (holder instanceof DoubleChest) {
-                        DoubleChest doubleChest = (DoubleChest) holder;
-                        doubleChest.getInventory().setContents(blockData.getContents());
-                    } else {
-                        ItemStack[] oldContents = blockData.getContents();
-                        ItemStack[] newContents = new ItemStack[27];
-                        System.arraycopy(oldContents, 0, newContents, 0, Math.min(oldContents.length, 27));
-                        container.getInventory().setContents(newContents);
-                    }
+            Block block = entry.getKey().getBlock();
+            BlockState freshState = block.getState();
+
+            if (freshState instanceof Container) {
+                Container container = (Container) freshState;
+                Inventory inv = container.getInventory();
+                ItemStack[] contents = blockData.getContents();
+
+                if (contents.length != inv.getSize()) {
+                    ItemStack[] adjusted = new ItemStack[inv.getSize()];
+                    System.arraycopy(contents, 0, adjusted, 0, Math.min(contents.length, inv.getSize()));
+                    inv.setContents(adjusted);
+                } else {
+                    inv.setContents(contents);
                 }
             }
-
-            this.removeTrapFromFile(location);
-            iterator.remove();
         }
 
         if (replacedBlocks.isEmpty()) {
@@ -710,73 +771,97 @@ public class TrapItemListener implements Listener {
                     for (String trapKey : worldSection.getKeys(false)) {
                         ConfigurationSection trapSection = worldSection.getConfigurationSection(trapKey);
                         if (trapSection != null) {
-                            UUID playerId = UUID.fromString(trapSection.getString("player"));
+                            UUID playerId;
+                            try {
+                                playerId = UUID.fromString(trapSection.getString("player"));
+                            } catch (Exception e) {
+                                continue;
+                            }
                             String world = trapSection.getString("world");
                             int x = trapSection.getInt("x");
                             int y = trapSection.getInt("y");
                             int z = trapSection.getInt("z");
                             String skin = trapSection.getString("skin", "default");
+
+                            if (Bukkit.getWorld(world) == null) continue;
                             Location location = new Location(Bukkit.getWorld(world), (double) x, (double) y, (double) z);
 
-
-
-
                             String playerName = Bukkit.getOfflinePlayer(playerId).getName();
-                            if(playerName == null) playerName = "Unknown";
+                            if (playerName == null) playerName = "Unknown";
                             String trapId = playerName + "_trap_" + x + "_" + y + "_" + z;
 
-                            if (Bukkit.getWorld(world) != null) {
-                                long currentTime = System.currentTimeMillis();
-                                long endTime = trapSection.getLong("endTime", currentTime + (long) (this.plugin.getTrapDuration() * 1000));
-                                long remainingTicks = (endTime - currentTime) / 50L;
+                            long currentTime = System.currentTimeMillis();
+                            long endTime = trapSection.getLong("endTime", currentTime + (long) (this.plugin.getTrapDuration() * 1000));
+                            long remainingTicks = (endTime - currentTime) / 50L;
 
-                                if (remainingTicks <= 0L) {
+                            Map<Location, TrapBlockData> persistedBlocks = BlockDataSerializer.loadBlocksFromConfig(trapSection, "blocks");
 
-
-
-                                    this.removeTrapRegion(trapId, location);
-                                    this.removeTrapFromFile(location);
+                            if (remainingTicks <= 0L) {
+                                if (!persistedBlocks.isEmpty()) {
+                                    this.playerReplacedBlocks.put(playerId, persistedBlocks);
+                                    for (Map.Entry<Location, TrapBlockData> entry : persistedBlocks.entrySet()) {
+                                        GlobalTrapRegistry.getInstance().registerAndGetOriginal(entry.getKey(), trapId, entry.getValue());
+                                    }
+                                    this.restoreBlocks(playerId, trapId);
+                                }
+                                this.removeTrapRegion(trapId, location);
+                                this.removeTrapFromFile(location);
+                            } else {
+                                if (!persistedBlocks.isEmpty()) {
+                                    this.playerReplacedBlocks.computeIfAbsent(playerId, k -> new HashMap<>()).putAll(persistedBlocks);
+                                    for (Map.Entry<Location, TrapBlockData> entry : persistedBlocks.entrySet()) {
+                                        GlobalTrapRegistry.getInstance().registerAndGetOriginal(entry.getKey(), trapId, entry.getValue());
+                                    }
                                 } else {
-
                                     String schematic = this.plugin.getSkinSchematic(skin);
                                     if (schematic != null) {
                                         try {
-                                            File schematicFile = new File("plugins/WorldEdit/schematics/" + schematic);
+                                            File schematicFile = getSchematicFile(schematic);
                                             if (schematicFile.exists()) {
                                                 try (ClipboardReader reader = ClipboardFormats.findByFile(schematicFile).getReader(new FileInputStream(schematicFile))) {
                                                     Clipboard clipboard = reader.read();
-
                                                     this.saveReplacedBlocks(playerId, location, clipboard, trapId);
-
-                                                    BlockVector3 min = clipboard.getRegion().getMinimumPoint();
-                                                    BlockVector3 max = clipboard.getRegion().getMaximumPoint();
-                                                    double sizeX = (double)(max.getBlockX() - min.getBlockX() + 1);
-                                                    double sizeY = (double)(max.getBlockY() - min.getBlockY() + 1);
-                                                    double sizeZ = (double)(max.getBlockZ() - min.getBlockZ() + 1);
-                                                    this.createTrapRegion((Player)null, location, sizeX, sizeY, sizeZ, skin);
                                                 }
                                             }
                                         } catch (Exception e) {}
                                     }
-
-                                    TrapData trapData = new TrapData(playerId, location, skin, remainingTicks / 20L);
-                                    this.activeTrapTimers.put(trapId, trapData);
-
-                                    Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
-                                        TrapData data = this.activeTrapTimers.get(trapId);
-                                        if (data != null) {
-                                            this.restoreBlocks(data.getPlayerId(), trapId);
-                                            this.removeTrapRegion(trapId, data.getLocation());
-                                            this.removeTrapFromFile(data.getLocation());
-                                            this.activeTrapTimers.remove(trapId);
-
-                                            String soundTypeEnded = skin.equals("default") ? this.plugin.getTrapSoundTypeEnded() : this.plugin.getConfig().getString("skins." + skin + ".sound.type-ended", this.plugin.getTrapSoundTypeEnded());
-                                            float soundVolumeEnded = (float) (skin.equals("default") ? (double) this.plugin.getTrapSoundVolumeEnded() : this.plugin.getConfig().getDouble("skins." + skin + ".sound.volume-ended", (double) this.plugin.getTrapSoundVolumeEnded()));
-                                            float soundPitchEnded = (float) (skin.equals("default") ? (double) this.plugin.getTrapSoundPitchEnded() : this.plugin.getConfig().getDouble("skins." + skin + ".sound.pitch-ended", (double) this.plugin.getTrapSoundPitchEnded()));
-                                            location.getWorld().playSound(location, Sound.valueOf(soundTypeEnded), soundVolumeEnded, soundPitchEnded);
-                                        }
-                                    }, remainingTicks);
                                 }
+
+                                String schematic = this.plugin.getSkinSchematic(skin);
+                                if (schematic != null) {
+                                    try {
+                                        File schematicFile = getSchematicFile(schematic);
+                                        if (schematicFile.exists()) {
+                                            try (ClipboardReader reader = ClipboardFormats.findByFile(schematicFile).getReader(new FileInputStream(schematicFile))) {
+                                                Clipboard clipboard = reader.read();
+                                                BlockVector3 min = clipboard.getRegion().getMinimumPoint();
+                                                BlockVector3 max = clipboard.getRegion().getMaximumPoint();
+                                                double sizeX = (double) (max.getBlockX() - min.getBlockX() + 1);
+                                                double sizeY = (double) (max.getBlockY() - min.getBlockY() + 1);
+                                                double sizeZ = (double) (max.getBlockZ() - min.getBlockZ() + 1);
+                                                this.createTrapRegion((Player) null, location, sizeX, sizeY, sizeZ, skin);
+                                            }
+                                        }
+                                    } catch (Exception e) {}
+                                }
+
+                                TrapData trapData = new TrapData(playerId, location, skin, remainingTicks / 20L);
+                                this.activeTrapTimers.put(trapId, trapData);
+
+                                Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
+                                    TrapData data = this.activeTrapTimers.get(trapId);
+                                    if (data != null) {
+                                        this.restoreBlocks(data.getPlayerId(), trapId);
+                                        this.removeTrapRegion(trapId, data.getLocation());
+                                        this.removeTrapFromFile(data.getLocation());
+                                        this.activeTrapTimers.remove(trapId);
+
+                                        String soundTypeEnded = skin.equals("default") ? this.plugin.getTrapSoundTypeEnded() : this.plugin.getConfig().getString("skins." + skin + ".sound.type-ended", this.plugin.getTrapSoundTypeEnded());
+                                        float soundVolumeEnded = (float) (skin.equals("default") ? (double) this.plugin.getTrapSoundVolumeEnded() : this.plugin.getConfig().getDouble("skins." + skin + ".sound.volume-ended", (double) this.plugin.getTrapSoundVolumeEnded()));
+                                        float soundPitchEnded = (float) (skin.equals("default") ? (double) this.plugin.getTrapSoundPitchEnded() : this.plugin.getConfig().getDouble("skins." + skin + ".sound.pitch-ended", (double) this.plugin.getTrapSoundPitchEnded()));
+                                        location.getWorld().playSound(location, Sound.valueOf(soundTypeEnded), soundVolumeEnded, soundPitchEnded);
+                                    }
+                                }, remainingTicks);
                             }
                         }
                     }
@@ -855,10 +940,14 @@ public class TrapItemListener implements Listener {
         for (World world : Bukkit.getWorlds()) {
             RegionManager regionManager = container.get(BukkitAdapter.adapt(world));
             if (regionManager != null) {
+                List<String> toRemove = new ArrayList<>();
                 for (String regionName : regionManager.getRegions().keySet()) {
-                    if (regionName.endsWith("_trap")) {
-                        regionManager.removeRegion(regionName);
+                    if (regionName.contains("_trap_")) {
+                        toRemove.add(regionName);
                     }
+                }
+                for (String regionName : toRemove) {
+                    regionManager.removeRegion(regionName);
                 }
             }
         }
