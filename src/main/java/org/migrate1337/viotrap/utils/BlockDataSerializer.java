@@ -135,6 +135,7 @@ public class BlockDataSerializer {
             dataOutput.close();
             return Base64.getEncoder().encodeToString(outputStream.toByteArray());
         } catch (Exception e) {
+            Bukkit.getLogger().warning("[VioTrap] Failed to serialize inventory contents: " + e.getMessage());
             return null;
         }
     }
@@ -152,6 +153,7 @@ public class BlockDataSerializer {
             dataInput.close();
             return items;
         } catch (Exception e) {
+            Bukkit.getLogger().warning("[VioTrap] Failed to deserialize inventory contents: " + e.getMessage());
             return null;
         }
     }

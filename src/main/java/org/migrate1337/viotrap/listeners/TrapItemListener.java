@@ -725,7 +725,7 @@ public class TrapItemListener implements Listener {
 
             BlockState state = block.getState();
             if (state instanceof CreatureSpawner) {
-                if (blockData.getSpawnedType() != null && !"UNKNOWN".equals(blockData.getSpawnedType())) {
+                if (blockData.getSpawnedType() != null) {
                     try {
                         ((CreatureSpawner) state).setSpawnedType(EntityType.valueOf(blockData.getSpawnedType()));
                         state.update(true, false);
