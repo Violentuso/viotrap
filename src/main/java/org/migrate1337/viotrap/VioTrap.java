@@ -20,16 +20,12 @@ import org.migrate1337.viotrap.actions.CustomActionFactory;
 import org.migrate1337.viotrap.actions.DenyItemUseCustomAction;
 import org.migrate1337.viotrap.commands.*;
 import org.migrate1337.viotrap.conditions.ConditionManager;
+import org.migrate1337.viotrap.editor.ParticleEditorManager;
 import org.migrate1337.viotrap.gui.ConditionEditorMenu;
+import org.migrate1337.viotrap.gui.ParticleEditorMenu;
 import org.migrate1337.viotrap.gui.PlateSkinCreationMenu;
 import org.migrate1337.viotrap.gui.SkinCreationMenu;
-import org.migrate1337.viotrap.listeners.ChatListener;
-import org.migrate1337.viotrap.listeners.DisorientItemListener;
-import org.migrate1337.viotrap.listeners.DivineAuraItemListener;
-import org.migrate1337.viotrap.listeners.FirestormItemListener;
-import org.migrate1337.viotrap.listeners.PlateItemListener;
-import org.migrate1337.viotrap.listeners.RevealItemListener;
-import org.migrate1337.viotrap.listeners.TrapItemListener;
+import org.migrate1337.viotrap.listeners.*;
 import org.migrate1337.viotrap.utils.ActiveSkinsManager;
 import org.migrate1337.viotrap.utils.ChatInputHandler;
 import org.migrate1337.viotrap.utils.SkinPointsManager;
@@ -113,6 +109,7 @@ public final class VioTrap extends JavaPlugin implements Listener {
     private final Map<String, String> tempPlateSkinData = new HashMap();
     private ConditionManager conditionManager;
     private ConditionEditorMenu conditionEditorMenu;
+    private ParticleEditorManager particleEditorManager;
 
     public void onLoad() {
         try {
@@ -181,7 +178,8 @@ public final class VioTrap extends JavaPlugin implements Listener {
         this.getServer().getPluginManager().registerEvents(this.conditionEditorMenu, this);
         this.getServer().getPluginManager().registerEvents(this.skinCreationMenu, this);
         this.getServer().getMessenger().registerOutgoingPluginChannel(this, "minecraft:client_settings");
-
+        this.particleEditorManager = new ParticleEditorManager(this);
+        getServer().getPluginManager().registerEvents(new EditorListener(this), this);
         this.pointsManager = new SkinPointsManager(this);
 
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
@@ -193,6 +191,8 @@ public final class VioTrap extends JavaPlugin implements Listener {
             this.getCommand("viotrap").setExecutor(mainCommand);
             this.getCommand("viotrap").setTabCompleter(mainCommand);
         }
+        ParticleEditorMenu particleMenu = new ParticleEditorMenu(this);
+        getServer().getPluginManager().registerEvents(particleMenu, this);
         this.getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         this.getServer().getPluginManager().registerEvents(new FirestormItemListener(this), this);
         this.getServer().getPluginManager().registerEvents(this, this);
@@ -254,7 +254,9 @@ public final class VioTrap extends JavaPlugin implements Listener {
 
         this.platesConfig = YamlConfiguration.loadConfiguration(this.platesFile);
     }
-
+    public ParticleEditorManager getParticleEditorManager() {
+        return particleEditorManager;
+    }
     public void savePlatesConfig() {
         try {
             this.platesConfig.save(this.platesFile);

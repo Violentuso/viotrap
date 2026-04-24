@@ -8,6 +8,7 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
 import org.migrate1337.viotrap.VioTrap;
+import org.migrate1337.viotrap.gui.ParticleEditorMenu;
 import org.migrate1337.viotrap.utils.ActiveSkinsManager;
 import org.migrate1337.viotrap.utils.GiveItemTabCompleter;
 import org.migrate1337.viotrap.utils.SkinPointsManager;
@@ -57,9 +58,13 @@ public class VioTrapCommand implements CommandExecutor, TabCompleter {
         if (subCommand.equals("give")) {
             return giveItemCommand.onCommand(sender, command, label, args);
         }
+        Player player = (Player)sender;
 
         String[] subArgs = Arrays.copyOfRange(args, 1, args.length);
-
+        if (args[0].equalsIgnoreCase("editor") && player.hasPermission("viotrap.editor")) {
+            new ParticleEditorMenu(plugin).open(player);
+            return true;
+        }
         switch (subCommand) {
             case "createskin":
                 return createSkinCommand.onCommand(sender, command, label, subArgs);
