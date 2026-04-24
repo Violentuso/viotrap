@@ -76,7 +76,7 @@ import org.migrate1337.viotrap.utils.PVPManagerHandle;
 
 public class TrapItemListener implements Listener {
     private final VioTrap plugin;
-    private final Map<UUID, Map<Location, TrapBlockData>> playerReplacedBlocks = new HashMap<>();
+    private final Map<String, Map<Location, TrapBlockData>> regionReplacedBlocks = new HashMap<>();
     private final Map<String, ProtectedCuboidRegion> activeTraps = new HashMap<>();
     private final CombatLogXHandler combatLogXHandler;
     private final PVPManagerHandle pvpManagerHandler;
@@ -444,7 +444,7 @@ public class TrapItemListener implements Listener {
         this.plugin.getTrapsConfig().set(path + ".skin", skin);
         this.plugin.getTrapsConfig().set(path + ".endTime", System.currentTimeMillis() + (long) (this.plugin.getTrapDuration() * 1000));
 
-        Map<Location, TrapBlockData> blocks = this.playerReplacedBlocks.get(player.getUniqueId());
+        Map<Location, TrapBlockData> blocks = this.regionReplacedBlocks.get(trapId);
         if (blocks != null && !blocks.isEmpty()) {
             ConfigurationSection section = this.plugin.getTrapsConfig().getConfigurationSection(path);
             if (section != null) {
@@ -544,7 +544,7 @@ public class TrapItemListener implements Listener {
 
 
     private void saveReplacedBlocks(UUID playerId, Location center, Clipboard clipboard, String regionId) {
-        Map<Location, TrapBlockData> replacedBlocks = this.playerReplacedBlocks.computeIfAbsent(playerId, k -> new HashMap<>());
+        Map<Location, TrapBlockData> replacedBlocks = this.regionReplacedBlocks.computeIfAbsent(regionId, k -> new HashMap<>());
 
         BlockVector3 min = clipboard.getRegion().getMinimumPoint();
         BlockVector3 max = clipboard.getRegion().getMaximumPoint();
@@ -641,7 +641,7 @@ public class TrapItemListener implements Listener {
     }
 
     public void restoreAllBlocks() {
-        if (this.playerReplacedBlocks.isEmpty()) {
+        if (this.regionReplacedBlocks.isEmpty()) {
             this.loadTrapsFromConfig();
         }
 
@@ -680,7 +680,7 @@ public class TrapItemListener implements Listener {
         this.activeTraps.clear();
         this.playersInTrapRegions.clear();
         this.activeTrapTimers.clear();
-        this.playerReplacedBlocks.clear();
+        this.regionReplacedBlocks.clear();
     }
 
     @EventHandler
@@ -692,29 +692,24 @@ public class TrapItemListener implements Listener {
 
 
     private void restoreBlocks(UUID playerId, String regionId) {
-        Map<Location, TrapBlockData> replacedBlocks = this.playerReplacedBlocks.get(playerId);
+        Map<Location, TrapBlockData> replacedBlocks = this.regionReplacedBlocks.get(regionId);
         if (replacedBlocks == null || replacedBlocks.isEmpty()) {
             return;
         }
 
         List<Map.Entry<Location, TrapBlockData>> toRestore = new ArrayList<>();
-        Iterator<Map.Entry<Location, TrapBlockData>> iterator = replacedBlocks.entrySet().iterator();
 
-        while (iterator.hasNext()) {
-            Map.Entry<Location, TrapBlockData> entry = iterator.next();
+        // Больше не используем iterator.remove() внутри цикла
+        for (Map.Entry<Location, TrapBlockData> entry : replacedBlocks.entrySet()) {
             Location location = entry.getKey();
-
             boolean shouldRestore = GlobalTrapRegistry.getInstance().unregister(location, regionId);
 
-            if (!shouldRestore) {
-                iterator.remove();
-                continue;
+            if (shouldRestore) {
+                toRestore.add(entry);
             }
-
-            toRestore.add(entry);
-            iterator.remove();
         }
 
+        // Восстанавливаем физические блоки
         for (Map.Entry<Location, TrapBlockData> entry : toRestore) {
             Location location = entry.getKey();
             TrapBlockData blockData = entry.getValue();
@@ -734,6 +729,7 @@ public class TrapItemListener implements Listener {
             }
         }
 
+        // Восстанавливаем инвентари
         for (Map.Entry<Location, TrapBlockData> entry : toRestore) {
             TrapBlockData blockData = entry.getValue();
             if (blockData.getContents() == null) continue;
@@ -756,9 +752,7 @@ public class TrapItemListener implements Listener {
             }
         }
 
-        if (replacedBlocks.isEmpty()) {
-            this.playerReplacedBlocks.remove(playerId);
-        }
+        this.regionReplacedBlocks.remove(regionId);
     }
 
     private void loadTrapsFromConfig() {
@@ -798,7 +792,7 @@ public class TrapItemListener implements Listener {
 
                             if (remainingTicks <= 0L) {
                                 if (!persistedBlocks.isEmpty()) {
-                                    this.playerReplacedBlocks.put(playerId, persistedBlocks);
+                                    this.regionReplacedBlocks.put(trapId, persistedBlocks);
                                     for (Map.Entry<Location, TrapBlockData> entry : persistedBlocks.entrySet()) {
                                         GlobalTrapRegistry.getInstance().registerAndGetOriginal(entry.getKey(), trapId, entry.getValue());
                                     }
@@ -808,7 +802,7 @@ public class TrapItemListener implements Listener {
                                 this.removeTrapFromFile(location);
                             } else {
                                 if (!persistedBlocks.isEmpty()) {
-                                    this.playerReplacedBlocks.computeIfAbsent(playerId, k -> new HashMap<>()).putAll(persistedBlocks);
+                                    this.regionReplacedBlocks.put(trapId, persistedBlocks);
                                     for (Map.Entry<Location, TrapBlockData> entry : persistedBlocks.entrySet()) {
                                         GlobalTrapRegistry.getInstance().registerAndGetOriginal(entry.getKey(), trapId, entry.getValue());
                                     }

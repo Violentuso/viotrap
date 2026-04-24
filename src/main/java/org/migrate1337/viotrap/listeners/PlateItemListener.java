@@ -66,7 +66,7 @@ import org.migrate1337.viotrap.utils.PVPManagerHandle;
 
 public class PlateItemListener implements Listener {
     private final VioTrap plugin;
-    private final Map<UUID, Map<Location, TrapBlockData>> playerReplacedBlocks = new HashMap<>();
+    private final Map<String, Map<Location, TrapBlockData>> regionReplacedBlocks = new HashMap<>();
     private final Map<String, ProtectedCuboidRegion> activePlates = new HashMap<>();
     private final CombatLogXHandler combatLogXHandler;
     private final PVPManagerHandle pvpManagerHandler;
@@ -198,7 +198,7 @@ public class PlateItemListener implements Listener {
                         player.sendMessage(this.plugin.getConfig().getString("plate.messages.success_used", "§aВы успешно использовали предмет."));
 
                         this.activePlateTimers.put(plateId, new PlateData(player.getUniqueId(), location, skin, System.currentTimeMillis() + (long) durationTicks * 50L));
-                        this.savePlateToConfig(player, location, skin, (long) (durationTicks / 20));
+                        this.savePlateToConfig(player, location, skin, (long) (durationTicks / 20), plateId);
 
                         String finalSkin = skin;
                         Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
@@ -331,7 +331,7 @@ public class PlateItemListener implements Listener {
 
         this.activePlates.clear();
         this.activePlateTimers.clear();
-        this.playerReplacedBlocks.clear();
+        this.regionReplacedBlocks.clear();
     }
 
     private boolean isRegionNearby(Location location, String worldName) {
@@ -424,7 +424,7 @@ public class PlateItemListener implements Listener {
     }
 
     public void restoreAllBlocks() {
-        if (this.playerReplacedBlocks.isEmpty()) {
+        if (this.regionReplacedBlocks.isEmpty()) {
             this.loadPlatesFromConfig();
         }
 
@@ -449,7 +449,7 @@ public class PlateItemListener implements Listener {
 
     }
     private void saveReplacedBlocks(UUID playerId, Location startLocation, Clipboard clipboard, String regionId) {
-        Map<Location, TrapBlockData> replacedBlocks = this.playerReplacedBlocks.computeIfAbsent(playerId, k -> new HashMap<>());
+        Map<Location, TrapBlockData> replacedBlocks = this.regionReplacedBlocks.computeIfAbsent(regionId, k -> new HashMap<>());
         BlockVector3 origin = clipboard.getOrigin();
 
         int offsetX = startLocation.getBlockX() - origin.getBlockX();
@@ -539,49 +539,47 @@ public class PlateItemListener implements Listener {
     }
 
     private void restoreBlocks(UUID playerId, String regionId) {
-        Map<Location, TrapBlockData> replacedBlocks = this.playerReplacedBlocks.get(playerId);
+        Map<Location, TrapBlockData> replacedBlocks = this.regionReplacedBlocks.get(regionId);
         if (replacedBlocks == null || replacedBlocks.isEmpty()) {
             return;
         }
 
         List<Map.Entry<Location, TrapBlockData>> toRestore = new ArrayList<>();
-        Iterator<Map.Entry<Location, TrapBlockData>> iterator = replacedBlocks.entrySet().iterator();
 
-        while (iterator.hasNext()) {
-            Map.Entry<Location, TrapBlockData> entry = iterator.next();
-            Location loc = entry.getKey();
+        // Больше не используем iterator.remove() внутри цикла
+        for (Map.Entry<Location, TrapBlockData> entry : replacedBlocks.entrySet()) {
+            Location location = entry.getKey();
+            boolean shouldRestore = GlobalTrapRegistry.getInstance().unregister(location, regionId);
 
-            boolean shouldRestore = GlobalTrapRegistry.getInstance().unregister(loc, regionId);
-
-            if (!shouldRestore) {
-                iterator.remove();
-                continue;
-            }
-
-            toRestore.add(entry);
-            iterator.remove();
-        }
-
-        for (Map.Entry<Location, TrapBlockData> entry : toRestore) {
-            Location loc = entry.getKey();
-            TrapBlockData oldData = entry.getValue();
-
-            Block currentBlock = loc.getBlock();
-            currentBlock.setType(oldData.getMaterial());
-            currentBlock.setBlockData(oldData.getBlockData());
-
-            BlockState state = currentBlock.getState();
-            if (state instanceof CreatureSpawner && oldData.getSpawnedType() != null) {
-                try {
-                    ((CreatureSpawner) state).setSpawnedType(EntityType.valueOf(oldData.getSpawnedType()));
-                    state.update(true, false);
-                } catch (Exception ignored) {}
+            if (shouldRestore) {
+                toRestore.add(entry);
             }
         }
 
+        // Восстанавливаем физические блоки
         for (Map.Entry<Location, TrapBlockData> entry : toRestore) {
-            TrapBlockData oldData = entry.getValue();
-            if (oldData.getContents() == null) continue;
+            Location location = entry.getKey();
+            TrapBlockData blockData = entry.getValue();
+
+            Block block = location.getBlock();
+            block.setType(blockData.getMaterial());
+            block.setBlockData(blockData.getBlockData());
+
+            BlockState state = block.getState();
+            if (state instanceof CreatureSpawner) {
+                if (blockData.getSpawnedType() != null) {
+                    try {
+                        ((CreatureSpawner) state).setSpawnedType(EntityType.valueOf(blockData.getSpawnedType()));
+                        state.update(true, false);
+                    } catch (Exception e) {}
+                }
+            }
+        }
+
+        // Восстанавливаем инвентари
+        for (Map.Entry<Location, TrapBlockData> entry : toRestore) {
+            TrapBlockData blockData = entry.getValue();
+            if (blockData.getContents() == null) continue;
 
             Block block = entry.getKey().getBlock();
             BlockState freshState = block.getState();
@@ -589,7 +587,7 @@ public class PlateItemListener implements Listener {
             if (freshState instanceof Container) {
                 Container container = (Container) freshState;
                 Inventory inv = container.getInventory();
-                ItemStack[] contents = oldData.getContents();
+                ItemStack[] contents = blockData.getContents();
 
                 if (contents.length != inv.getSize()) {
                     ItemStack[] adjusted = new ItemStack[inv.getSize()];
@@ -601,9 +599,8 @@ public class PlateItemListener implements Listener {
             }
         }
 
-        if (replacedBlocks.isEmpty()) {
-            this.playerReplacedBlocks.remove(playerId);
-        }
+
+        this.regionReplacedBlocks.remove(regionId);
     }
 
     private void loadPlatesFromConfig() {
@@ -643,7 +640,7 @@ public class PlateItemListener implements Listener {
 
                             if (remainingMillis > 0L) {
                                 if (!persistedBlocks.isEmpty()) {
-                                    this.playerReplacedBlocks.computeIfAbsent(playerId, k -> new HashMap<>()).putAll(persistedBlocks);
+                                    this.regionReplacedBlocks.put(plateId, persistedBlocks);
                                     for (Map.Entry<Location, TrapBlockData> entry : persistedBlocks.entrySet()) {
                                         GlobalTrapRegistry.getInstance().registerAndGetOriginal(entry.getKey(), plateId, entry.getValue());
                                     }
@@ -651,7 +648,7 @@ public class PlateItemListener implements Listener {
                                     Block block = location.getBlock();
                                     TrapBlockData currentData = new TrapBlockData(block.getType(), block.getBlockData(), null, null);
                                     TrapBlockData finalData = GlobalTrapRegistry.getInstance().registerAndGetOriginal(location, plateId, currentData);
-                                    this.playerReplacedBlocks.computeIfAbsent(playerId, k -> new HashMap<>()).put(location, finalData);
+                                    this.regionReplacedBlocks.put(plateId, persistedBlocks);
                                 }
 
                                 this.activePlateTimers.put(plateId, new PlateData(playerId, location, skin, endTime));
@@ -674,7 +671,7 @@ public class PlateItemListener implements Listener {
                                 }, remainingMillis / 50L);
                             } else {
                                 if (!persistedBlocks.isEmpty()) {
-                                    this.playerReplacedBlocks.put(playerId, persistedBlocks);
+                                    this.regionReplacedBlocks.put(plateId, persistedBlocks);
                                     for (Map.Entry<Location, TrapBlockData> entry : persistedBlocks.entrySet()) {
                                         GlobalTrapRegistry.getInstance().registerAndGetOriginal(entry.getKey(), plateId, entry.getValue());
                                     }
@@ -689,7 +686,7 @@ public class PlateItemListener implements Listener {
         }
     }
 
-    private void savePlateToConfig(Player player, Location location, String skin, long durationSeconds) {
+    private void savePlateToConfig(Player player, Location location, String skin, long durationSeconds, String plateId) {
         String path = "plates." + location.getWorld().getName() + "." + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
         this.plugin.getPlatesConfig().set(path + ".player", player.getUniqueId().toString());
         this.plugin.getPlatesConfig().set(path + ".world", location.getWorld().getName());
@@ -699,7 +696,7 @@ public class PlateItemListener implements Listener {
         this.plugin.getPlatesConfig().set(path + ".skin", skin);
         this.plugin.getPlatesConfig().set(path + ".endTime", System.currentTimeMillis() + durationSeconds * 1000L);
 
-        Map<Location, TrapBlockData> blocks = this.playerReplacedBlocks.get(player.getUniqueId());
+        Map<Location, TrapBlockData> blocks = this.regionReplacedBlocks.get(plateId);
         if (blocks != null && !blocks.isEmpty()) {
             ConfigurationSection section = this.plugin.getPlatesConfig().getConfigurationSection(path);
             if (section != null) {
