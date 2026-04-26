@@ -8,10 +8,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.util.Vector;
 import org.migrate1337.viotrap.VioTrap;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class ParticleEditorManager {
     private final VioTrap plugin;
@@ -22,18 +19,17 @@ public class ParticleEditorManager {
         startParticleTask();
     }
 
-    // Запуск сессии
-    public void startEditorSession(Player player, String patternName) {
+    public void startEditorSession(Player player, String patternName, String existingTemplate) {
         if (activeSessions.containsKey(player.getUniqueId())) {
             player.sendMessage("§cВы уже находитесь в режиме редактирования!");
             return;
         }
 
         Location originalLoc = player.getLocation();
-        // ФИКС: Берем строго координаты целого блока, чтобы избавиться от десятых долей!
+
+        // Строгие координаты центра (без десятых долей)
         Location arenaCenter = new Location(originalLoc.getWorld(), originalLoc.getBlockX(), 200, originalLoc.getBlockZ());
 
-        // 1. Сохраняем текущее состояние игрока
         EditorSession session = new EditorSession(
                 player.getUniqueId(),
                 patternName,
@@ -45,131 +41,253 @@ public class ParticleEditorManager {
                 player.isFlying()
         );
         activeSessions.put(player.getUniqueId(), session);
-
-        // 2. Очищаем инвентарь
+        if (existingTemplate != null) {
+            loadPatternIntoSession(session, existingTemplate);
+        }
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
 
-        // 3. Выдаем инструменты
         player.getInventory().setItem(0, getBrushItem());
         player.getInventory().setItem(7, getSaveItem());
         player.getInventory().setItem(8, getCancelItem());
-
-        // 4. Генерируем куб 3х3х3 из камня
+        player.getInventory().setItem(1, getPaletteItem());
+        player.getInventory().setItem(2, getImportItem());
         buildCube(arenaCenter, Material.STONE);
-
-        // 5. Включаем полет, чтобы удобно было рисовать
+        player.getInventory().setItem(3, getShapeItem(Material.SLIME_BALL, "Круг"));
+        player.getInventory().setItem(4, getShapeItem(Material.BRICK, "Квадрат"));
+        player.getInventory().setItem(5, getShapeItem(Material.ARROW, "Треугольник"));
         player.setAllowFlight(true);
         player.setFlying(true);
 
-        // 6. Телепортируем к арене (отступаем на 5 блоков по Z, чтобы игрок смотрел на куб)
-        Location tpLoc = arenaCenter.clone().add(0, 0, -5);
-        tpLoc.setYaw(0); // Смотрим прямо (на юг)
+        // Отступаем чуть дальше (-5.5), так как куб стал больше
+        Location tpLoc = arenaCenter.clone().add(0.5, 0, -5.5);
+        tpLoc.setYaw(0);
         tpLoc.setPitch(0);
         player.teleport(tpLoc);
 
         player.sendMessage("§aВы вошли в редактор партиклов!");
         player.sendMessage("§7Используйте кисть для рисования по пресету.");
     }
+
     private void startParticleTask() {
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             for (EditorSession session : activeSessions.values()) {
                 Player player = Bukkit.getPlayer(session.getPlayerId());
                 if (player == null || !player.isOnline()) continue;
 
-                // Отображаем каждую точку
-                for (Vector relPos : session.getParticlePoints()) {
-                    // +0.5 чтобы партикл был ровно в центре блока
-                    Location particleLoc = session.getArenaCenter().clone()
-                            .add(relPos).add(0.5, 0.5, 0.5);
+                // Перебираем все цветные точки
+                for (Map.Entry<Vector, String> entry : session.getColoredPoints().entrySet()) {
+                    Location particleLoc = session.getArenaCenter().clone().add(entry.getKey());
 
-                    // Спавним красивую частицу (пока что стандартную)
-                    player.spawnParticle(Particle.VILLAGER_HAPPY, particleLoc, 2, 0.1, 0.1, 0.1, 0);
+                    // Парсим цвет конкретной точки
+                    String[] rgb = entry.getValue().split(",");
+                    org.bukkit.Color color = org.bukkit.Color.fromRGB(
+                            Integer.parseInt(rgb[0]), Integer.parseInt(rgb[1]), Integer.parseInt(rgb[2])
+                    );
+                    org.bukkit.Particle.DustOptions dust = new org.bukkit.Particle.DustOptions(color, 0.8F);
+
+                    player.spawnParticle(Particle.REDSTONE, particleLoc, 1, 0, 0, 0, 0, dust);
                 }
             }
-        }, 0L, 10L);
+        }, 0L, 5L); // Обновляем чаще для редактора
     }
-    public void handleBrushClick(Player player, Block clickedBlock, boolean addPoint) {
+    private ItemStack getShapeItem(Material mat, String shapeName) {
+        ItemStack item = new ItemStack(mat);
+        org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName("§bФигура: " + shapeName);
+        meta.setLore(java.util.Arrays.asList(
+                "§7ПКМ - Нарисовать фигуру",
+                "§7ЛКМ - Изменить размер"
+        ));
+        item.setItemMeta(meta);
+        return item;
+    }
+    // --- ОБНОВЛЕННАЯ КИСТЬ ---
+    public void handleBrushClick(Player player, Vector exactHitPos, boolean addPoint) {
         EditorSession session = activeSessions.get(player.getUniqueId());
-        if (session == null || clickedBlock == null) return;
+        if (session == null) return;
 
-        Location center = session.getArenaCenter();
+        Vector relativePos = exactHitPos.clone().subtract(session.getArenaCenter().toVector());
+        if (Math.abs(relativePos.getX()) > 3.5 || Math.abs(relativePos.getY()) > 3.5 || Math.abs(relativePos.getZ()) > 3.5) return;
 
-        // Проверяем, кликнул ли игрок по нашему кубу 3x3x3 (чтобы не рисовал за его пределами)
-        if (Math.abs(clickedBlock.getX() - center.getBlockX()) > 1 ||
-                Math.abs(clickedBlock.getY() - center.getBlockY()) > 1 ||
-                Math.abs(clickedBlock.getZ() - center.getBlockZ()) > 1) {
-            return;
-        }
-
-        // Вычисляем относительную координату (например, 1, 1, -1)
-        Vector relativePos = clickedBlock.getLocation().toVector().subtract(center.toVector());
+        int size = session.getBrushSize();
+        // Максимальный размер кисти 15 будет давать радиус 1.4 блока (Огромная кисть)
+        double radius = (size - 1) * 0.1;
 
         if (addPoint) {
-            if (session.getParticlePoints().add(relativePos)) {
-                clickedBlock.setType(Material.LIME_STAINED_GLASS); // Красим блок в зеленый
-                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 2f);
+            for (double x = -radius; x <= radius; x += 0.2) {
+                for (double y = -radius; y <= radius; y += 0.2) {
+                    for (double z = -radius; z <= radius; z += 0.2) {
+                        if (x*x + y*y + z*z <= radius*radius) {
+                            Vector pt = new Vector(relativePos.getX() + x, relativePos.getY() + y, relativePos.getZ() + z);
+                            addPointRounded(session, pt);
+                        }
+                    }
+                }
             }
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 2f);
         } else {
-            if (session.getParticlePoints().remove(relativePos)) {
-                clickedBlock.setType(Material.STONE); // Возвращаем камень
-                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1f, 1f);
-            }
+            double eraseRadius = Math.max(0.4, radius + 0.2);
+            session.getColoredPoints().keySet().removeIf(pt -> pt.distance(relativePos) <= eraseRadius);
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1f, 1f);
         }
     }
-    // Завершение сессии (сохранение или отмена)
+
+    // --- ОБНОВЛЕННАЯ ГЕОМЕТРИЯ (С плавным масштабированием) ---
+    public void handleShapeClick(Player player, Vector exactHitPos, org.bukkit.block.BlockFace face, String shapeType) {
+        EditorSession session = activeSessions.get(player.getUniqueId());
+        if (session == null) return;
+
+        Vector relCenter = exactHitPos.clone().subtract(session.getArenaCenter().toVector());
+        boolean isFlat = (face == org.bukkit.block.BlockFace.UP || face == org.bukkit.block.BlockFace.DOWN);
+        boolean isXPlane = (face == org.bukkit.block.BlockFace.EAST || face == org.bukkit.block.BlockFace.WEST);
+
+        if (shapeType.equals("Круг")) {
+            // Делим на 3.0, чтобы при размере 15 радиус был ровно 5.0
+            double r = session.getCircleRadius() / 3.0;
+            // Шаг 0.05 вместо 0.1, чтобы большой круг был плотным
+            for (double angle = 0; angle < Math.PI * 2; angle += 0.05) {
+                double a = Math.cos(angle) * r;
+                double b = Math.sin(angle) * r;
+                Vector pt = isFlat ? relCenter.clone().add(new Vector(a, 0, b)) :
+                        (isXPlane ? relCenter.clone().add(new Vector(0, a, b)) : relCenter.clone().add(new Vector(a, b, 0)));
+                addPointRounded(session, pt);
+            }
+        }
+        else if (shapeType.equals("Квадрат")) {
+            double s = session.getSquareSize() / 3.0;
+            // Шаг 0.1 вместо 0.2
+            for (double i = -s; i <= s; i += 0.1) {
+                addPointRounded(session, isFlat ? relCenter.clone().add(new Vector(i, 0, s)) : (isXPlane ? relCenter.clone().add(new Vector(0, i, s)) : relCenter.clone().add(new Vector(i, s, 0))));
+                addPointRounded(session, isFlat ? relCenter.clone().add(new Vector(i, 0, -s)) : (isXPlane ? relCenter.clone().add(new Vector(0, i, -s)) : relCenter.clone().add(new Vector(i, -s, 0))));
+                addPointRounded(session, isFlat ? relCenter.clone().add(new Vector(s, 0, i)) : (isXPlane ? relCenter.clone().add(new Vector(0, s, i)) : relCenter.clone().add(new Vector(s, i, 0))));
+                addPointRounded(session, isFlat ? relCenter.clone().add(new Vector(-s, 0, i)) : (isXPlane ? relCenter.clone().add(new Vector(0, -s, i)) : relCenter.clone().add(new Vector(-s, i, 0))));
+            }
+        }
+        else if (shapeType.equals("Треугольник")) {
+            double s = session.getTriangleSize() / 3.0;
+            // Шаг 0.02 вместо 0.05 (треугольник рисуется линиями)
+            for (double t = 0; t <= 1; t += 0.02) {
+                Vector v1 = new Vector(0, s, 0);
+                Vector v2 = new Vector(s * 0.866, -s * 0.5, 0);
+                Vector v3 = new Vector(-s * 0.866, -s * 0.5, 0);
+
+                drawLine(session, relCenter, v1, v2, t, isFlat, isXPlane);
+                drawLine(session, relCenter, v2, v3, t, isFlat, isXPlane);
+                drawLine(session, relCenter, v3, v1, t, isFlat, isXPlane);
+            }
+        }
+        player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_CAST_SPELL, 1f, 1f);
+    }
+
+    // Вспомогательный метод для округления и добавления цвета
+    private void addPointRounded(EditorSession session, Vector pt) {
+        double rx = Math.round(pt.getX() * 10.0) / 10.0;
+        double ry = Math.round(pt.getY() * 10.0) / 10.0;
+        double rz = Math.round(pt.getZ() * 10.0) / 10.0;
+        session.getColoredPoints().put(new Vector(rx, ry, rz), session.getCurrentBrushColor());
+    }
+
+    // Вспомогательный метод для линий треугольника
+    private void drawLine(EditorSession session, Vector center, Vector a, Vector b, double t, boolean flat, boolean xPlane) {
+        Vector pt = a.clone().add(b.clone().subtract(a).multiply(t));
+        Vector rotated = flat ? new Vector(pt.getX(), 0, pt.getY()) : (xPlane ? new Vector(0, pt.getX(), pt.getY()) : pt);
+        addPointRounded(session, center.clone().add(rotated));
+    }
+
     public void stopEditorSession(Player player, boolean save) {
         EditorSession session = activeSessions.remove(player.getUniqueId());
         if (session == null) return;
 
         if (save) {
-            // TODO: В Part 4 здесь будет логика сохранения координат партиклов в конфиг
+            // Преобразуем векторы в строки для конфига
+            java.util.List<String> serializedPoints = new java.util.ArrayList<>();
+            for (Map.Entry<Vector, String> entry : session.getColoredPoints().entrySet()) {
+                Vector v = entry.getKey();
+                // Сохраняем в формате: 1.05,2.50,-0.05:255,0,0
+                String pointStr = String.format(java.util.Locale.US, "%.2f,%.2f,%.2f:%s", v.getX(), v.getY(), v.getZ(), entry.getValue());
+                serializedPoints.add(pointStr);
+            }
+
+            // Сохраняем в config.yml
+            plugin.getConfig().set("custom_patterns." + session.getPatternName(), serializedPoints);
+            plugin.saveConfig();
+
             player.sendMessage("§aШаблон партиклов '" + session.getPatternName() + "' успешно сохранен!");
         } else {
             player.sendMessage("§cСоздание шаблона отменено.");
         }
 
-        // 1. Возвращаем инвентарь
         player.getInventory().setContents(session.getSavedInventory());
         player.getInventory().setArmorContents(session.getSavedArmor());
 
-        // 2. Удаляем временный 3x3x3 куб (заменяем на воздух)
         buildCube(session.getArenaCenter(), Material.AIR);
 
-        // 3. Возвращаем статус полета
         player.setAllowFlight(session.isWasAllowFlight());
         player.setFlying(session.isWasFlying());
 
-        // 4. Возвращаем на исходную точку
         player.teleport(session.getOriginalLocation());
     }
-
-    // Вспомогательный метод для строительства/удаления куба
+    public ItemStack getImportItem() {
+        ItemStack item = new ItemStack(Material.PAPER);
+        org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName("§eИмпорт шаблона");
+            meta.setLore(java.util.Arrays.asList("§7Нажмите ПКМ, чтобы скопировать", "§7старый рисунок в эту область."));
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
     private void buildCube(Location center, Material material) {
-        for (int x = -1; x <= 1; x++) {
-            for (int y = -1; y <= 1; y++) {
-                for (int z = -1; z <= 1; z++) {
+        // Увеличиваем размер до 5x5x5
+        for (int x = -2; x <= 2; x++) {
+            for (int y = -2; y <= 2; y++) {
+                for (int z = -2; z <= 2; z++) {
                     center.clone().add(x, y, z).getBlock().setType(material);
                 }
             }
         }
     }
+    public void loadPatternIntoSession(EditorSession session, String patternToLoad) {
+        List<String> points = plugin.getConfig().getStringList("custom_patterns." + patternToLoad);
+        if (points == null || points.isEmpty()) return;
 
+        for (String point : points) {
+            try {
+                String[] data = point.split(":");
+                String[] coords = data[0].split(",");
+                Vector v = new Vector(
+                        Double.parseDouble(coords[0]),
+                        Double.parseDouble(coords[1]),
+                        Double.parseDouble(coords[2])
+                );
+                String color = data.length > 1 ? data[1] : "0,255,0";
+
+                session.getColoredPoints().put(v, color);
+            } catch (Exception ignored) {}
+        }
+    }
     public boolean isEditing(Player player) {
         return activeSessions.containsKey(player.getUniqueId());
     }
 
-    // --- Предметы для редактора ---
-
     public ItemStack getBrushItem() {
-        ItemStack item = new ItemStack(Material.STICK);
+        ItemStack item = new ItemStack(Material.NETHERITE_HOE);
         ItemMeta meta = item.getItemMeta();
         meta.setDisplayName("§dВолшебная кисть");
         meta.setLore(Arrays.asList("§7ПКМ по блоку, чтобы добавить партикл", "§7ЛКМ по блоку, чтобы удалить"));
         item.setItemMeta(meta);
         return item;
     }
-
+    public ItemStack getPaletteItem() {
+        ItemStack item = new ItemStack(Material.PAINTING);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName("§dПалитра цветов");
+        meta.setLore(Arrays.asList("§7Нажмите ПКМ, чтобы выбрать", "§7цвет для вашей кисти."));
+        item.setItemMeta(meta);
+        return item;
+    }
+    public EditorSession getSession(Player player) { return activeSessions.get(player.getUniqueId()); }
     public ItemStack getSaveItem() {
         ItemStack item = new ItemStack(Material.LIME_DYE);
         ItemMeta meta = item.getItemMeta();

@@ -2,6 +2,7 @@ package org.migrate1337.viotrap.gui;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -22,40 +23,51 @@ public class ParticleEditorMenu implements Listener {
     }
 
     public void open(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 27, menuTitle);
+        // Увеличим меню до 54 слотов, чтобы влезли старые шаблоны
+        Inventory inv = Bukkit.createInventory(null, 54, menuTitle);
 
-        // Кнопка пресета: 3x3x3 Куб
+        // Кнопка: Создать с нуля (Чистый куб)
         ItemStack cubePreset = new ItemStack(Material.STONE);
         ItemMeta cubeMeta = cubePreset.getItemMeta();
         if (cubeMeta != null) {
-            cubeMeta.setDisplayName("§eПресет: Куб 3x3x3");
+            cubeMeta.setDisplayName("§eСоздать с нуля (Куб 5x5x5)");
             cubeMeta.setLore(Arrays.asList(
                     "§7Нажмите, чтобы создать новый",
-                    "§7шаблон партиклов в кубе 3x3x3."
+                    "§7чистый шаблон партиклов."
             ));
             cubePreset.setItemMeta(cubeMeta);
         }
-        inv.setItem(13, cubePreset); // По центру
+        inv.setItem(4, cubePreset); // По центру сверху
 
-        // Кнопка закрытия
-        ItemStack close = new ItemStack(Material.BARRIER);
-        ItemMeta closeMeta = close.getItemMeta();
-        if (closeMeta != null) {
-            closeMeta.setDisplayName("§cЗакрыть");
-            close.setItemMeta(closeMeta);
-        }
-        inv.setItem(26, close); // В правом нижнем углу
-
-        // Декоративное стекло для пустого пространства
+        // Декоративное стекло
         ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta glassMeta = glass.getItemMeta();
         if (glassMeta != null) {
             glassMeta.setDisplayName(" ");
             glass.setItemMeta(glassMeta);
         }
-        for (int i = 0; i < inv.getSize(); i++) {
-            if (inv.getItem(i) == null) {
-                inv.setItem(i, glass);
+        for (int i = 9; i < 18; i++) {
+            inv.setItem(i, glass);
+        }
+
+        // Выводим все СУЩЕСТВУЮЩИЕ шаблоны для редактирования
+        ConfigurationSection section = plugin.getConfig().getConfigurationSection("custom_patterns");
+        if (section != null) {
+            int slot = 18;
+            for (String patternName : section.getKeys(false)) {
+                if (slot >= 54) break;
+
+                ItemStack patternItem = new ItemStack(Material.BLAZE_POWDER);
+                ItemMeta meta = patternItem.getItemMeta();
+                if (meta != null) {
+                    meta.setDisplayName("§a" + patternName);
+                    meta.setLore(Arrays.asList(
+                            "§7Нажмите ЛКМ, чтобы открыть",
+                            "§7и отредактировать этот шаблон."
+                    ));
+                    patternItem.setItemMeta(meta);
+                }
+                inv.setItem(slot++, patternItem);
             }
         }
 
@@ -64,10 +76,8 @@ public class ParticleEditorMenu implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent event) {
-        // Проверяем, что это наше меню
         if (!event.getView().getTitle().equals(menuTitle)) return;
-
-        event.setCancelled(true); // Запрещаем забирать предметы
+        event.setCancelled(true);
 
         if (!(event.getWhoClicked() instanceof Player)) return;
         Player player = (Player) event.getWhoClicked();
@@ -75,16 +85,25 @@ public class ParticleEditorMenu implements Listener {
         ItemStack clicked = event.getCurrentItem();
         if (clicked == null || clicked.getType() == Material.AIR) return;
 
+        // Генерируем новое имя для сохранения (как и раньше)
+        String tempPatternName = player.getName() + "_pattern_" + (System.currentTimeMillis() / 1000);
+
+        // 1. Если кликнул на Камень (Создать с нуля)
         if (clicked.getType() == Material.STONE) {
             player.closeInventory();
-            // Генерируем уникальное имя шаблона (позже можно будет запрашивать в чате)
-            String tempPatternName = player.getName() + "_pattern_" + (System.currentTimeMillis() / 1000);
+            // Передаем null, так как старого шаблона нет
+            plugin.getParticleEditorManager().startEditorSession(player, tempPatternName, null);
+            return;
+        }
 
-            // Запускаем сессию из Part 1!
-            plugin.getParticleEditorManager().startEditorSession(player, tempPatternName);
-
-        } else if (clicked.getType() == Material.BARRIER) {
+        // 2. Если кликнул на сохраненный шаблон (Редактировать старый)
+        if (clicked.getType() == Material.BLAZE_POWDER && clicked.hasItemMeta()) {
             player.closeInventory();
+            // Достаем имя шаблона без цветовых кодов (§a)
+            String existingTemplate = org.bukkit.ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
+
+            // Запускаем сессию, передавая имя старого шаблона ТРЕТЬИМ аргументом!
+            plugin.getParticleEditorManager().startEditorSession(player, tempPatternName, existingTemplate);
         }
     }
 }

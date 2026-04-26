@@ -32,11 +32,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Sound;
-import org.bukkit.World;
+
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
@@ -192,6 +189,7 @@ public class TrapItemListener implements Listener {
 
                                                 this.saveReplacedBlocks(player.getUniqueId(), location, clipboard, trapId);
                                                 this.saveTrapToConfig(player, location, skin, trapId);
+
                                                 ClipboardHolder holder = new ClipboardHolder(clipboard);
                                                 Operations.complete(holder.createPaste(editSession).to(pastePosition).build());
 
@@ -204,6 +202,7 @@ public class TrapItemListener implements Listener {
                                                         this.activeSkinsManager.setActiveTrapSkin(player.getUniqueId(), "default");
                                                     }
                                                 }
+                                                this.startTrapParticleTask(player.getUniqueId(), location, trapId, plugin.getTrapDuration() * 20);
                                                 String finalSkin = skin;
                                                 Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
                                                     TrapData data = this.activeTrapTimers.get(trapId);
@@ -220,7 +219,9 @@ public class TrapItemListener implements Listener {
                                                         location.getWorld().playSound(location, Sound.valueOf(soundTypeEnded), soundVolumeEnded, soundPitchEnded);
                                                     }
                                                 }, (int) (skin.equals("default") ? (double) this.plugin.getTrapDuration() * 20 : this.plugin.getConfig().getInt("skins." + skin + ".duration", (int) this.plugin.getTrapCooldown()) * 20));
+
                                             }
+
                                         }
                                     } catch (Exception e) {
                                         e.printStackTrace();
@@ -433,7 +434,71 @@ public class TrapItemListener implements Listener {
             }
         }
     }
+    private void startTrapParticleTask(UUID ownerId, Location center, String trapId, long durationTicks) {
+        new org.bukkit.scheduler.BukkitRunnable() {
+            long ticksElapsed = 0;
+            final Location baseLoc = new Location(center.getWorld(), center.getBlockX(), center.getBlockY(), center.getBlockZ());
 
+            @Override
+            public void run() {
+                if (ticksElapsed >= durationTicks || !activeTraps.containsKey(trapId)) {
+                    this.cancel();
+                    return;
+                }
+
+                String selectedEffect = plugin.getConfig().getString("active_player_patterns." + ownerId.toString());
+
+                if (selectedEffect != null) {
+                    List<String> frames = plugin.getConfig().getStringList("custom_animations." + selectedEffect);
+
+                    if (!frames.isEmpty()) {
+                        // РЕЖИМ АНИМАЦИИ: Спавним ровно 1 раз в момент смены кадра
+                        int frameSpeed = 2; // Скорость: 1 кадр каждые 0.5 секунды
+
+                        if (ticksElapsed % frameSpeed == 0) {
+                            int currentFrameIndex = (int) ((ticksElapsed / frameSpeed) % frames.size());
+                            String patternToDisplay = frames.get(currentFrameIndex);
+                            drawPattern(patternToDisplay, baseLoc);
+                        }
+                    } else {
+                        // РЕЖИМ СТАТИКИ: Обновляем раз в 10 тиков, чтобы не наслаивать облако
+                        if (ticksElapsed % 10 == 0) {
+                            drawPattern(selectedEffect, baseLoc);
+                        }
+                    }
+                }
+                ticksElapsed++;
+            }
+
+            private void drawPattern(String patternName, Location baseLoc) {
+                List<String> points = plugin.getConfig().getStringList("custom_patterns." + patternName);
+                if (points == null || points.isEmpty()) return;
+
+                for (String point : points) {
+                    try {
+                        // Разделяем координаты и цвет по двоеточию (Например: "1.05,2.50,-0.05:255,0,0")
+                        String[] data = point.split(":");
+                        String[] coords = data[0].split(",");
+
+                        double dx = Double.parseDouble(coords[0]);
+                        double dy = Double.parseDouble(coords[1]);
+                        double dz = Double.parseDouble(coords[2]);
+
+                        // Если шаблон старый (без цвета), ставим по умолчанию лаймовый
+                        String[] rgb = data.length > 1 ? data[1].split(",") : new String[]{"0", "255", "0"};
+                        org.bukkit.Color color = org.bukkit.Color.fromRGB(
+                                Integer.parseInt(rgb[0]), Integer.parseInt(rgb[1]), Integer.parseInt(rgb[2])
+                        );
+
+                        Location pLoc = baseLoc.clone().add(dx, dy + 1, dz);
+                        org.bukkit.Particle.DustOptions dust = new org.bukkit.Particle.DustOptions(color, 0.6F);
+
+                        baseLoc.getWorld().spawnParticle(org.bukkit.Particle.REDSTONE, pLoc, 1, 0, 0, 0, 0, dust);
+                    } catch (Exception ignored) {}
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
     private void saveTrapToConfig(Player player, Location location, String skin, String trapId) {
         String path = "traps." + location.getWorld().getName() + "." + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
         this.plugin.getTrapsConfig().set(path + ".player", player.getUniqueId().toString());

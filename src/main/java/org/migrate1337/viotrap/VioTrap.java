@@ -21,10 +21,7 @@ import org.migrate1337.viotrap.actions.DenyItemUseCustomAction;
 import org.migrate1337.viotrap.commands.*;
 import org.migrate1337.viotrap.conditions.ConditionManager;
 import org.migrate1337.viotrap.editor.ParticleEditorManager;
-import org.migrate1337.viotrap.gui.ConditionEditorMenu;
-import org.migrate1337.viotrap.gui.ParticleEditorMenu;
-import org.migrate1337.viotrap.gui.PlateSkinCreationMenu;
-import org.migrate1337.viotrap.gui.SkinCreationMenu;
+import org.migrate1337.viotrap.gui.*;
 import org.migrate1337.viotrap.listeners.*;
 import org.migrate1337.viotrap.utils.ActiveSkinsManager;
 import org.migrate1337.viotrap.utils.ChatInputHandler;
@@ -193,10 +190,16 @@ public final class VioTrap extends JavaPlugin implements Listener {
         }
         ParticleEditorMenu particleMenu = new ParticleEditorMenu(this);
         getServer().getPluginManager().registerEvents(particleMenu, this);
+        PatternSelectMenu patternSelectMenu = new PatternSelectMenu(this);
+        getServer().getPluginManager().registerEvents(patternSelectMenu, this);
         this.getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         this.getServer().getPluginManager().registerEvents(new FirestormItemListener(this), this);
         this.getServer().getPluginManager().registerEvents(this, this);
-
+        AnimationCreatorMenu animCreatorMenu = new AnimationCreatorMenu(this);
+        getServer().getPluginManager().registerEvents(animCreatorMenu, this);
+        getServer().getPluginManager().registerEvents(new ColorPaletteMenu(this), this);
+        getServer().getPluginManager().registerEvents(new ColorChatListener(this), this);
+        getServer().getPluginManager().registerEvents(new org.migrate1337.viotrap.gui.TemplateImportMenu(this), this);
         this.getServer().getPluginManager().registerEvents(new PlateSkinCreationMenu(this), this);
         DenyItemUseCustomAction denyListener = new DenyItemUseCustomAction("dummy", new HashSet<>());
         getServer().getPluginManager().registerEvents(denyListener, this);
