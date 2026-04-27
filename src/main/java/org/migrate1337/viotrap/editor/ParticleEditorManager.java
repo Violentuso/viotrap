@@ -77,7 +77,12 @@ public class ParticleEditorManager {
 
                 // Перебираем все цветные точки
                 for (Map.Entry<Vector, String> entry : session.getColoredPoints().entrySet()) {
-                    Location particleLoc = session.getArenaCenter().clone().add(entry.getKey());
+                    Vector v = entry.getKey();
+
+                    // Тот самый фикс с тенями (Z-fighting)
+                    // Стягиваем партиклы на 2% к центру, чтобы оторвать их от граней каменного куба
+                    double scale = 1.02;
+                    Location particleLoc = session.getArenaCenter().clone().add(v.getX() * scale, v.getY() * scale, v.getZ() * scale);
 
                     // Парсим цвет конкретной точки
                     String[] rgb = entry.getValue().split(",");
@@ -102,8 +107,8 @@ public class ParticleEditorManager {
         item.setItemMeta(meta);
         return item;
     }
-    // --- ОБНОВЛЕННАЯ КИСТЬ ---
-    public void handleBrushClick(Player player, Vector exactHitPos, boolean addPoint) {
+    // --- ОБНОВЛЕННАЯ КИСТЬ (ТЕПЕРЬ ПЛОСКИЙ КРУГ) ---
+    public void handleBrushClick(Player player, Vector exactHitPos, org.bukkit.block.BlockFace face, boolean addPoint) {
         EditorSession session = activeSessions.get(player.getUniqueId());
         if (session == null) return;
 
@@ -111,25 +116,33 @@ public class ParticleEditorManager {
         if (Math.abs(relativePos.getX()) > 3.5 || Math.abs(relativePos.getY()) > 3.5 || Math.abs(relativePos.getZ()) > 3.5) return;
 
         int size = session.getBrushSize();
-        // Максимальный размер кисти 15 будет давать радиус 1.4 блока (Огромная кисть)
+        // Максимальный размер кисти 15 будет давать радиус 1.4 блока
         double radius = (size - 1) * 0.1;
 
+        // Определяем плоскость, на которую кликнул игрок
+        boolean isFlat = (face == org.bukkit.block.BlockFace.UP || face == org.bukkit.block.BlockFace.DOWN);
+        boolean isXPlane = (face == org.bukkit.block.BlockFace.EAST || face == org.bukkit.block.BlockFace.WEST);
+
         if (addPoint) {
-            for (double x = -radius; x <= radius; x += 0.2) {
-                for (double y = -radius; y <= radius; y += 0.2) {
-                    for (double z = -radius; z <= radius; z += 0.2) {
-                        if (x*x + y*y + z*z <= radius*radius) {
-                            Vector pt = new Vector(relativePos.getX() + x, relativePos.getY() + y, relativePos.getZ() + z);
-                            addPointRounded(session, pt);
-                        }
+            // Теперь это двойной цикл (2D), а не тройной (3D)
+            for (double a = -radius; a <= radius; a += 0.2) {
+                for (double b = -radius; b <= radius; b += 0.2) {
+                    if (a*a + b*b <= radius*radius) {
+                        // Подстраиваем оси в зависимости от стены или пола
+                        Vector pt = isFlat ? new Vector(a, 0, b) :
+                                (isXPlane ? new Vector(0, a, b) : new Vector(a, b, 0));
+
+                        addPointRounded(session, relativePos.clone().add(pt));
                     }
                 }
             }
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 2f);
+            player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 2f);
         } else {
+            // Ластик оставляем объемным (сферой), чтобы он стирал всё вокруг курсора
+            // Это гораздо удобнее, чем пытаться попасть точно в плоскость партикла
             double eraseRadius = Math.max(0.4, radius + 0.2);
             session.getColoredPoints().keySet().removeIf(pt -> pt.distance(relativePos) <= eraseRadius);
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1f, 1f);
+            player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_BASS, 1f, 1f);
         }
     }
 

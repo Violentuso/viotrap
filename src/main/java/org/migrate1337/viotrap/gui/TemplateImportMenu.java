@@ -15,11 +15,12 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.editor.EditorSession;
 
-import java.util.Arrays;
+import java.util.*;
 
 public class TemplateImportMenu implements Listener, InventoryHolder {
     private final VioTrap plugin;
     private final String menuTitle = "§8Импорт шаблона";
+    private final Map<UUID, Integer> playerPages = new HashMap<>();
 
     public TemplateImportMenu(VioTrap plugin) {
         this.plugin = plugin;
@@ -31,6 +32,10 @@ public class TemplateImportMenu implements Listener, InventoryHolder {
     }
 
     public void open(Player player) {
+        open(player, 0);
+    }
+
+    public void open(Player player, int page) {
         Inventory inv = Bukkit.createInventory(this, 54, menuTitle);
 
         // Информационная кнопка
@@ -55,25 +60,51 @@ public class TemplateImportMenu implements Listener, InventoryHolder {
             inv.setItem(i, glass);
         }
 
-        // Выводим все доступные шаблоны из конфига
+        // Собираем список всех шаблонов
+        List<String> allPatterns = new ArrayList<>();
         ConfigurationSection section = plugin.getConfig().getConfigurationSection("custom_patterns");
         if (section != null) {
-            int slot = 18;
-            for (String patternName : section.getKeys(false)) {
-                if (slot >= 54) break;
-
-                ItemStack patternItem = new ItemStack(Material.BLAZE_POWDER);
-                ItemMeta meta = patternItem.getItemMeta();
-                if (meta != null) {
-                    meta.setDisplayName("§e" + patternName);
-                    meta.setLore(Arrays.asList("§7Нажмите ЛКМ, чтобы импортировать", "§7этот рисунок в редактор."));
-                    patternItem.setItemMeta(meta);
-                }
-                inv.setItem(slot++, patternItem);
-            }
+            allPatterns.addAll(section.getKeys(false));
         }
 
+        // Пагинация
+        int itemsPerPage = 27; // Слоты 18-44
+        int totalPages = (int) Math.ceil((double) allPatterns.size() / itemsPerPage);
+        if (totalPages == 0) totalPages = 1;
+
+        if (page < 0) page = 0;
+        if (page >= totalPages) page = totalPages - 1;
+        playerPages.put(player.getUniqueId(), page);
+
+        int startIndex = page * itemsPerPage;
+        int slot = 18;
+        for (int i = startIndex; i < Math.min(startIndex + itemsPerPage, allPatterns.size()); i++) {
+            String patternName = allPatterns.get(i);
+            ItemStack patternItem = new ItemStack(Material.BLAZE_POWDER);
+            ItemMeta meta = patternItem.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName("§e" + patternName);
+                meta.setLore(Arrays.asList("§7Нажмите ЛКМ, чтобы импортировать", "§7этот рисунок в редактор."));
+                patternItem.setItemMeta(meta);
+            }
+            inv.setItem(slot++, patternItem);
+        }
+
+        // Кнопки навигации
+        if (page > 0) inv.setItem(45, createNavButton("§a◀ Предыдущая страница"));
+        if (page < totalPages - 1) inv.setItem(53, createNavButton("§aСледующая страница ▶"));
+
         player.openInventory(inv);
+    }
+
+    private ItemStack createNavButton(String name) {
+        ItemStack item = new ItemStack(Material.ARROW);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(name);
+            item.setItemMeta(meta);
+        }
+        return item;
     }
 
     @EventHandler
@@ -87,22 +118,26 @@ public class TemplateImportMenu implements Listener, InventoryHolder {
 
         if (clicked == null || clicked.getType() == Material.AIR) return;
 
-        // Если игрок кликнул по шаблону
+        // Навигация
+        if (clicked.getType() == Material.ARROW) {
+            int currentPage = playerPages.getOrDefault(player.getUniqueId(), 0);
+            if (clicked.getItemMeta().getDisplayName().contains("◀")) {
+                open(player, currentPage - 1);
+            } else {
+                open(player, currentPage + 1);
+            }
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1f, 1f);
+            return;
+        }
+
         if (clicked.getType() == Material.BLAZE_POWDER && clicked.hasItemMeta()) {
             String patternToImport = org.bukkit.ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
-
-            // Получаем текущую сессию игрока в редакторе
             EditorSession session = plugin.getParticleEditorManager().getSession(player);
 
             if (session != null) {
-                // Накладываем точки
                 plugin.getParticleEditorManager().loadPatternIntoSession(session, patternToImport);
-
-                player.sendMessage("§aШаблон §e" + patternToImport + " §aуспешно наложен на вашу область!");
+                player.sendMessage("§aШаблон §e" + patternToImport + " §aуспешно наложен!");
                 player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
-                player.closeInventory();
-            } else {
-                player.sendMessage("§cОшибка: Ваша сессия редактирования не найдена.");
                 player.closeInventory();
             }
         }

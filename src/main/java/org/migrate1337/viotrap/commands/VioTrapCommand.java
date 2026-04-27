@@ -112,6 +112,9 @@ public class VioTrapCommand implements CommandExecutor, TabCompleter {
 
         sendHelpLine(sender, "info", "Показать этот список");
         sendHelpLine(sender, "give <player> <item> [amount]", "Выдать спец. предметы");
+        sendHelpLine(sender, "editor", "Открыть редактор партиклов");
+        sendHelpLine(sender, "animator", "Создать анимацию из шаблонов");
+        sendHelpLine(sender, "effects", "Выбрать эффект ловушки");
         sendHelpLine(sender, "createskin", "Открыть меню создания скина ловушки");
         sendHelpLine(sender, "createplateskin", "Открыть меню создания скина пласта");
         sendHelpLine(sender, "applyskin <player> <skin>", "Применить скин ловушки игроку");
@@ -133,7 +136,8 @@ public class VioTrapCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> subcommands = Arrays.asList(
                     "info", "give", "createskin", "createplateskin",
-                    "applyskin", "applyplateskin", "skinpoints", "conditions"
+                    "applyskin", "applyplateskin", "skinpoints", "conditions",
+                    "editor", "animator", "effects", "reload"
             );
             return StringUtil.copyPartialMatches(args[0], subcommands, new ArrayList<>());
         }

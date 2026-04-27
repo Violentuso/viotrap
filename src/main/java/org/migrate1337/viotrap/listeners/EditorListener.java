@@ -53,10 +53,10 @@ public class EditorListener implements Listener {
                     player.sendMessage("§eРазмер кисти изменен на: §a" + plugin.getParticleEditorManager().getSession(player).getBrushSize());
                     player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1f, 1.5f);
                 } else {
-                    if (exactHitPos != null) plugin.getParticleEditorManager().handleBrushClick(player, exactHitPos, false);
+                    if (exactHitPos != null) plugin.getParticleEditorManager().handleBrushClick(player, exactHitPos, hitFace, false);
                 }
             } else if (action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK) {
-                if (exactHitPos != null) plugin.getParticleEditorManager().handleBrushClick(player, exactHitPos, true);
+                if (exactHitPos != null) plugin.getParticleEditorManager().handleBrushClick(player, exactHitPos, hitFace, true);
             }
             return;
         }

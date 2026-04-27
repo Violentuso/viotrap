@@ -107,6 +107,7 @@ public final class VioTrap extends JavaPlugin implements Listener {
     private ConditionManager conditionManager;
     private ConditionEditorMenu conditionEditorMenu;
     private ParticleEditorManager particleEditorManager;
+    private org.migrate1337.viotrap.utils.ParticleCacheManager particleCacheManager;
 
     public void onLoad() {
         try {
@@ -178,6 +179,7 @@ public final class VioTrap extends JavaPlugin implements Listener {
         this.particleEditorManager = new ParticleEditorManager(this);
         getServer().getPluginManager().registerEvents(new EditorListener(this), this);
         this.pointsManager = new SkinPointsManager(this);
+        this.particleCacheManager = new org.migrate1337.viotrap.utils.ParticleCacheManager(this);
 
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             (new SkinPointsPlaceholder(this, this.pointsManager, this.activeSkinsManager)).register();
@@ -208,8 +210,12 @@ public final class VioTrap extends JavaPlugin implements Listener {
         this.chatInputHandler = new ChatInputHandler();
         this.tempSkinData = new HashMap();
     }
-
+    public org.migrate1337.viotrap.utils.ParticleCacheManager getParticleCacheManager() {
+        return particleCacheManager;
+    }
     public void onDisable() {
+        saveTrapsConfig();
+        savePlatesConfig();
         if (this.trapItemListener != null) {
             this.trapItemListener.cleanupOnDisable();
         }

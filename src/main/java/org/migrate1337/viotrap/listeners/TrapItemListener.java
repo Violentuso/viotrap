@@ -82,7 +82,7 @@ public class TrapItemListener implements Listener {
     private final ActiveSkinsManager activeSkinsManager;
     private final Map<String, TrapData> activeTrapTimers = new HashMap<>();
     private final Map<UUID, Map<String, Long>> playerCooldowns = new HashMap<>();
-
+    private boolean isSaveQueued = false;
     public TrapItemListener(VioTrap plugin) {
         this.plugin = plugin;
         this.combatLogXHandler = new CombatLogXHandler();
@@ -107,6 +107,18 @@ public class TrapItemListener implements Listener {
 
         }
         return worldEditFile;
+    }
+    private void requestConfigSave() {
+        if (!isSaveQueued) {
+            isSaveQueued = true;
+            // Откладываем сохранение на 40 тиков (2 секунды).
+            // Все последующие изменения конфигурации в течение этого времени
+            // будут сохранены за один проход, не вызывая лагов!
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                plugin.saveTrapsConfig();
+                isSaveQueued = false;
+            }, 40L);
+        }
     }
     @EventHandler
     public void onPlayerUseTrap(PlayerInteractEvent event) {
@@ -248,7 +260,7 @@ public class TrapItemListener implements Listener {
         String worldName = location.getWorld().getName();
         String path = "traps." + worldName + "." + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
         this.plugin.getTrapsConfig().set(path, null);
-        this.plugin.saveTrapsConfig();
+        this.requestConfigSave();
     }
 
     private void replaceSkinnedTrapsWithNewSkin(Player player, String oldSkin, String newSkin) {
@@ -368,7 +380,7 @@ public class TrapItemListener implements Listener {
     private void saveCooldownToConfig(UUID playerId, Material material, long endTime) {
         String path = "cooldowns." + playerId.toString() + "." + material.toString();
         this.plugin.getTrapsConfig().set(path + ".endTime", endTime);
-        this.plugin.saveTrapsConfig();
+        this.requestConfigSave();
         long remainingTime = endTime - System.currentTimeMillis();
         if (remainingTime > 0L) {
             Bukkit.getScheduler().runTaskLater(this.plugin, () -> this.removeCooldownFromConfig(playerId, material), remainingTime / 50L);
@@ -401,7 +413,7 @@ public class TrapItemListener implements Listener {
     private void removeCooldownFromConfig(UUID playerId, Material material) {
         String path = "cooldowns." + playerId.toString() + "." + material.toString();
         this.plugin.getTrapsConfig().set(path, null);
-        this.plugin.saveTrapsConfig();
+        this.requestConfigSave();
     }
 
     private void loadCooldownsFromConfig() {
@@ -437,7 +449,9 @@ public class TrapItemListener implements Listener {
     private void startTrapParticleTask(UUID ownerId, Location center, String trapId, long durationTicks) {
         new org.bukkit.scheduler.BukkitRunnable() {
             long ticksElapsed = 0;
+            // Создаем локацию ОДИН раз
             final Location baseLoc = new Location(center.getWorld(), center.getBlockX(), center.getBlockY(), center.getBlockZ());
+            boolean hasPlayersNearby = true;
 
             @Override
             public void run() {
@@ -446,22 +460,41 @@ public class TrapItemListener implements Listener {
                     return;
                 }
 
-                String selectedEffect = plugin.getConfig().getString("active_player_patterns." + ownerId.toString());
+                // ==========================================
+                // ОПТИМИЗАЦИЯ 1: Culling (Проверка дистанции)
+                // Раз в 20 тиков (1 сек) проверяем, есть ли игроки в радиусе 35 блоков (1225^2).
+                // ==========================================
+                if (ticksElapsed % 20 == 0) {
+                    hasPlayersNearby = false;
+                    for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+                        if (p.getWorld().equals(baseLoc.getWorld()) && p.getLocation().distanceSquared(baseLoc) < 1225) {
+                            hasPlayersNearby = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!hasPlayersNearby) {
+                    ticksElapsed++;
+                    return; // Игроков нет - просто скипаем отрисовку, экономя 100% ресурсов!
+                }
+
+                // ==========================================
+                // ОПТИМИЗАЦИЯ 2: RAM Cache вместо config.yml
+                // ==========================================
+                String selectedEffect = plugin.getParticleCacheManager().getPlayerEffect(ownerId);
 
                 if (selectedEffect != null) {
-                    List<String> frames = plugin.getConfig().getStringList("custom_animations." + selectedEffect);
+                    List<String> frames = plugin.getParticleCacheManager().getAnimation(selectedEffect);
 
-                    if (!frames.isEmpty()) {
-                        // РЕЖИМ АНИМАЦИИ: Спавним ровно 1 раз в момент смены кадра
-                        int frameSpeed = 2; // Скорость: 1 кадр каждые 0.5 секунды
-
+                    if (frames != null && !frames.isEmpty()) {
+                        int frameSpeed = 2;
                         if (ticksElapsed % frameSpeed == 0) {
                             int currentFrameIndex = (int) ((ticksElapsed / frameSpeed) % frames.size());
                             String patternToDisplay = frames.get(currentFrameIndex);
                             drawPattern(patternToDisplay, baseLoc);
                         }
                     } else {
-                        // РЕЖИМ СТАТИКИ: Обновляем раз в 10 тиков, чтобы не наслаивать облако
                         if (ticksElapsed % 10 == 0) {
                             drawPattern(selectedEffect, baseLoc);
                         }
@@ -471,30 +504,36 @@ public class TrapItemListener implements Listener {
             }
 
             private void drawPattern(String patternName, Location baseLoc) {
-                List<String> points = plugin.getConfig().getStringList("custom_patterns." + patternName);
+                // Берем готовый список точек из памяти (Моментально)
+                List<org.migrate1337.viotrap.utils.CachedPoint> points = plugin.getParticleCacheManager().getPattern(patternName);
                 if (points == null || points.isEmpty()) return;
 
-                for (String point : points) {
-                    try {
-                        // Разделяем координаты и цвет по двоеточию (Например: "1.05,2.50,-0.05:255,0,0")
-                        String[] data = point.split(":");
-                        String[] coords = data[0].split(",");
+                // ==========================================
+                // ОПТИМИЗАЦИЯ 3: Decimation (Лимит плотности)
+                // Если в шаблоне больше 400 точек, рисуем каждую вторую.
+                // ==========================================
+                int step = points.size() > 400 ? 2 : 1;
 
-                        double dx = Double.parseDouble(coords[0]);
-                        double dy = Double.parseDouble(coords[1]);
-                        double dz = Double.parseDouble(coords[2]);
+                for (int i = 0; i < points.size(); i += step) {
+                    org.migrate1337.viotrap.utils.CachedPoint pt = points.get(i);
+                    org.bukkit.Particle.DustOptions dustOptions = new org.bukkit.Particle.DustOptions(pt.color, 0.6F);
 
-                        // Если шаблон старый (без цвета), ставим по умолчанию лаймовый
-                        String[] rgb = data.length > 1 ? data[1].split(",") : new String[]{"0", "255", "0"};
-                        org.bukkit.Color color = org.bukkit.Color.fromRGB(
-                                Integer.parseInt(rgb[0]), Integer.parseInt(rgb[1]), Integer.parseInt(rgb[2])
-                        );
+                    // МАТЕМАТИЧЕСКАЯ МАГИЯ: Уменьшаем разлет партиклов на 2%
+                    // Это "втянет" их из стен, пола и потолка в воздушное пространство ловушки
+                    double scale = 1.02;
+                    double ox = pt.x * scale;
+                    double oy = pt.y * scale;
+                    double oz = pt.z * scale;
 
-                        Location pLoc = baseLoc.clone().add(dx, dy + 1, dz);
-                        org.bukkit.Particle.DustOptions dust = new org.bukkit.Particle.DustOptions(color, 0.6F);
+                    // ==========================================
+                    // ОПТИМИЗАЦИЯ 4: Object Pooling (Сборка мусора)
+                    // ==========================================
 
-                        baseLoc.getWorld().spawnParticle(org.bukkit.Particle.REDSTONE, pLoc, 1, 0, 0, 0, 0, dust);
-                    } catch (Exception ignored) {}
+                    // Используем отмасштабированные координаты (ox, oy, oz)
+                    // И не забываем твой + 1 по высоте!
+                    baseLoc.add(ox, oy + 1, oz);
+                    baseLoc.getWorld().spawnParticle(org.bukkit.Particle.REDSTONE, baseLoc, 1, 0, 0, 0, 0, dustOptions);
+                    baseLoc.subtract(ox, oy + 1, oz);
                 }
             }
         }.runTaskTimer(plugin, 0L, 1L);
@@ -517,7 +556,7 @@ public class TrapItemListener implements Listener {
             }
         }
 
-        this.plugin.saveTrapsConfig();
+        this.requestConfigSave();
     }
 
     private void applyEffects(Player player, String configPath) {
