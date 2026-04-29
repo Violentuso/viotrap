@@ -13,38 +13,21 @@ public class TeleportOutCustomAction implements CustomAction {
     private final String target;
     private final int blocks;
     private final int minHeight;
-
-    public TeleportOutCustomAction(String target, int blocks, int minHeight) {
+    private final double radius;
+    public TeleportOutCustomAction(String target, int blocks, int minHeight, int radius) {
         this.target = target.toLowerCase();
         this.blocks = blocks;
         this.minHeight = minHeight;
+        this.radius = radius;
     }
 
+    @Override
     public void execute(Player player, Player[] opponents, VioTrap plugin) {
-        switch (this.target) {
-            case "p":
-            case "player":
-                if (player != null && player.isOnline()) {
-                    this.teleportPlayer(player, player.getLocation(), plugin);
-                }
-                break;
-            case "o":
-                for(Player opponent : opponents) {
-                    if (opponent != null && opponent.isOnline()) {
-                        this.teleportPlayer(opponent, opponent.getLocation(), plugin);
-                    }
-                }
-                break;
-            case "rp":
-                Player randomPlayer = CustomActionFactory.getRandomPlayer(player, opponents);
-                if (randomPlayer != null && randomPlayer.isOnline()) {
-                    this.teleportPlayer(randomPlayer, randomPlayer.getLocation(), plugin);
-                } else {
-                }
-                break;
-            default:
+        for (Player t : CustomActionFactory.getTargets(this.target, player, opponents, this.radius)) {
+            if (t != null && t.isOnline()) {
+                this.teleportPlayer(t, t.getLocation(), plugin);
+            }
         }
-
     }
 
     private void teleportPlayer(Player player, Location trapLocation, VioTrap plugin) {

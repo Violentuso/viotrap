@@ -176,13 +176,7 @@ public class TrapItemListener implements Listener {
                                             float soundPitch = (float) (skin.equals("default") ? (double) this.plugin.getTrapSoundPitch() : this.plugin.getConfig().getDouble("skins." + skin + ".sound.pitch", (double) this.plugin.getTrapSoundPitch()));
                                             this.applyEffects(player, "skins." + skin + ".effects.player");
                                             player.sendMessage(this.plugin.getConfig().getString("trap.messages.success_used"));
-                                            List<CustomAction> actions = CustomActionFactory.loadActions(skin, plugin);
-                                            this.skinActions.put(skin, actions);
                                             Player[] opponents = location.getWorld().getNearbyEntities(location, sizeX - (double) 3.0F, sizeY, sizeZ - (double) 3.0F, (entity) -> entity instanceof Player && !entity.equals(player)).stream().filter((entity) -> entity instanceof Player).toArray(Player[]::new);
-                                            location.getWorld().playSound(location, Sound.valueOf(soundType), soundVolume, soundPitch);
-                                            for (CustomAction action : actions) {
-                                                action.execute(player, opponents, this.plugin);
-                                            }
 
                                             for (Player opponent : opponents) {
                                                 if (this.plugin.getConfig().getBoolean("trap.enable-pvp")) {
@@ -213,6 +207,13 @@ public class TrapItemListener implements Listener {
                                                         plugin.getSkinPointsManager().removePoints(player.getUniqueId(), skin, 1);
                                                         this.activeSkinsManager.setActiveTrapSkin(player.getUniqueId(), "default");
                                                     }
+                                                }
+                                                List<CustomAction> actions = CustomActionFactory.loadActions(skin, plugin);
+                                                this.skinActions.put(skin, actions);
+
+                                                location.getWorld().playSound(location, Sound.valueOf(soundType), soundVolume, soundPitch);
+                                                for (CustomAction action : actions) {
+                                                    action.execute(player, opponents, this.plugin);
                                                 }
                                                 this.startTrapParticleTask(player.getUniqueId(), location, trapId, plugin.getTrapDuration() * 20);
                                                 String finalSkin = skin;

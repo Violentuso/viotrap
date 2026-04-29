@@ -28,10 +28,11 @@ public class DenyItemUseCustomAction implements CustomAction, Listener {
     private final String target;
     private final Set<Material> items;
     private static Set<Material> configuredDeniedItems = Collections.emptySet();
-
-    public DenyItemUseCustomAction(String target, Set<Material> items) {
+    private final double radius;
+    public DenyItemUseCustomAction(String target, Set<Material> items, double radius) {
         this.target = target.toLowerCase();
         this.items = new HashSet<>(items);
+        this.radius = radius;
         setConfiguredDeniedItems(this.items);
     }
 
@@ -40,24 +41,10 @@ public class DenyItemUseCustomAction implements CustomAction, Listener {
     }
     @Override
     public void execute(Player player, Player[] opponents, VioTrap plugin) {
-        switch (target) {
-            case "p":
-            case "player":
-                apply(player, plugin);
-                break;
-            case "o":
-                for (Player opponent : opponents) {
-                    apply(opponent, plugin);
-                }
-                break;
-            case "rp":
-                Player random = CustomActionFactory.getRandomPlayer(player, opponents);
-                if (random != null) apply(random, plugin);
-                break;
-            default:
+        for (Player t : CustomActionFactory.getTargets(this.target, player, opponents, this.radius)) {
+            this.apply(t, plugin);
         }
     }
-
     public static void applyForPlayer(UUID uuid) {
         Player player = Bukkit.getPlayer(uuid);
 

@@ -49,6 +49,15 @@ public class CustomActionFactory {
                 case "denyitemuse":
                     loadDenyItemUseAction(actionConfig, actionKey, skinName, actions, plugin);
                 break;
+                case "launch": // <--- Новое
+                    loadLaunchAction(actionConfig, actionKey, skinName, actions, plugin);
+                    break;
+                case "scrambleinventory": // <--- Новое
+                    loadScrambleInventoryAction(actionConfig, actionKey, skinName, actions, plugin);
+                break;
+                case "blockspread":
+                    loadBlockSpreadAction(actionConfig, actionKey, skinName, actions, plugin);
+                    break;
                     default:
             }
         }
@@ -59,7 +68,7 @@ public class CustomActionFactory {
         String target = cfg.getString("target", "p");
         List<String> itemNames = cfg.getStringList("items");
         int seconds = cfg.getInt("seconds", 30);
-
+        double radius = cfg.getDouble("radius", 5.0);
         if (itemNames.isEmpty() || seconds <= 0 || !isValidTarget(target)) {
             return;
         }
@@ -71,14 +80,14 @@ public class CustomActionFactory {
         }
 
         if (!materials.isEmpty()) {
-            actions.add(new CooldownItemCustomAction(target, materials, seconds));
+            actions.add(new CooldownItemCustomAction(target, materials, seconds, radius));
         }
     }
 
     private static void loadDenyItemUseAction(ConfigurationSection cfg, String key, String skin, List<CustomAction> actions, VioTrap plugin) {
         String target = cfg.getString("target", "p");
         List<String> itemNames = cfg.getStringList("items");
-
+        double radius = cfg.getDouble("radius", 5.0);
         if (itemNames.isEmpty() || !isValidTarget(target)) {
             return;
         }
@@ -90,18 +99,35 @@ public class CustomActionFactory {
         }
 
         if (!materials.isEmpty()) {
-            DenyItemUseCustomAction action = new DenyItemUseCustomAction(target, materials);
+            DenyItemUseCustomAction action = new DenyItemUseCustomAction(target, materials, radius);
             actions.add(action);
 
             plugin.getServer().getPluginManager().registerEvents(action, plugin);
 
         }
     }
+    private static void loadLaunchAction(ConfigurationSection cfg, String key, String skin, List<CustomAction> actions, VioTrap plugin) {
+        String target = cfg.getString("target", "not-in");
+        double radius = cfg.getDouble("radius", 5.0);
+        double upwardForce = cfg.getDouble("upward-force", 1.2);
+        double horizontalForce = cfg.getDouble("horizontal-force", 1.5);
+        if (isValidTarget(target)) {
+            actions.add(new LaunchCustomAction(target, radius, upwardForce, horizontalForce));
+        }
+    }
+
+    private static void loadScrambleInventoryAction(ConfigurationSection cfg, String key, String skin, List<CustomAction> actions, VioTrap plugin) {
+        String target = cfg.getString("target", "p");
+        double radius = cfg.getDouble("radius", 5.0);
+        if (isValidTarget(target)) {
+            actions.add(new ScrambleInventoryCustomAction(target, radius));
+        }
+    }
     private static void loadEffectAction(ConfigurationSection actionConfig, String actionKey, String skinName,
                                          List<CustomAction> actions, VioTrap plugin) {
         String target = actionConfig.getString("target", "p");
         String effectName = actionConfig.getString("effect");
-
+        double radius = actionConfig.getDouble("radius", 5.0);
         if (effectName != null) {
             if (actionConfig.contains("amplifier") && actionConfig.contains("duration")) {
                 try {
@@ -112,7 +138,7 @@ public class CustomActionFactory {
                         return;
                     }
 
-                    actions.add(new EffectCustomAction(target, effectName.toUpperCase(), amplifier, duration));
+                    actions.add(new EffectCustomAction(target, effectName.toUpperCase(), amplifier, duration, radius));
                 } catch (Exception e) {
                 }
             } else {
@@ -127,7 +153,7 @@ public class CustomActionFactory {
                         int duration = Integer.parseInt(parts[3]);
 
                         if (isValidTarget(target)) {
-                            actions.add(new EffectCustomAction(target, effect, amplifier, duration));
+                            actions.add(new EffectCustomAction(target, effect, amplifier, duration, radius));
                         }
                     } else {
                     }
@@ -136,10 +162,41 @@ public class CustomActionFactory {
         } else {
         }
     }
+    public static List<Player> getTargets(String targetType, Player primaryPlayer, Player[] opponents, double radius) {
+        List<Player> targets = new ArrayList<>();
+        if (primaryPlayer == null) return targets;
 
+        switch (targetType.toLowerCase()) {
+            case "p":
+            case "player":
+                targets.add(primaryPlayer);
+                break;
+            case "o":
+                if (opponents != null) targets.addAll(Arrays.asList(opponents));
+                break;
+            case "rp":
+                Player random = getRandomPlayer(primaryPlayer, opponents);
+                if (random != null) targets.add(random);
+                break;
+            case "not-in":
+                List<Player> trapPlayers = new ArrayList<>();
+                trapPlayers.add(primaryPlayer);
+                if (opponents != null) trapPlayers.addAll(Arrays.asList(opponents));
+
+                for (org.bukkit.entity.Entity entity : primaryPlayer.getNearbyEntities(radius, radius, radius)) {
+                    if (entity instanceof Player) {
+                        Player nearbyPlayer = (Player) entity;
+                        if (!trapPlayers.contains(nearbyPlayer)) targets.add(nearbyPlayer);
+                    }
+                }
+                break;
+        }
+        return targets;
+    }
     private static void loadCommandAction(ConfigurationSection actionConfig, String actionKey, String skinName,
                                           List<CustomAction> actions, VioTrap plugin) {
         String commandData = actionConfig.getString("command");
+        double radius = actionConfig.getDouble("radius", 5.0);
         if (commandData != null) {
             String[] parts = commandData.split(" ");
             if (parts.length >= 2) {
@@ -147,7 +204,7 @@ public class CustomActionFactory {
                 String command = String.join(" ", Arrays.copyOfRange(parts, 0, parts.length - 1));
 
                 if (isValidTarget(target)) {
-                    actions.add(new CommandCustomAction(target, command));
+                    actions.add(new CommandCustomAction(target, command, radius));
                 } else {
                 }
             } else {
@@ -158,6 +215,7 @@ public class CustomActionFactory {
     private static void loadTeleportOutAction(ConfigurationSection actionConfig, String actionKey, String skinName,
                                               List<CustomAction> actions, VioTrap plugin) {
         String teleportData = actionConfig.getString("teleport");
+        int radius = actionConfig.getInt("radius", 5);
         if (teleportData != null) {
             String[] parts = teleportData.split(" ");
             if (parts.length == 3) {
@@ -168,7 +226,7 @@ public class CustomActionFactory {
                     int minHeight = actionConfig.getInt("min-height", 10);
 
                     if (isValidTarget(target) && location.equalsIgnoreCase("up") && blocks > 0 && minHeight >= 0) {
-                        actions.add(new TeleportOutCustomAction(target, blocks, minHeight));
+                        actions.add(new TeleportOutCustomAction(target, blocks, minHeight, radius));
                     } else {
                     }
                 } catch (NumberFormatException e) {
@@ -176,11 +234,25 @@ public class CustomActionFactory {
             }
         }
     }
+    private static void loadBlockSpreadAction(ConfigurationSection cfg, String key, String skin, List<CustomAction> actions, VioTrap plugin) {
+        String target = cfg.getString("target", "not-in");
+        double radius = cfg.getDouble("radius", 5.0);
+        String materialName = cfg.getString("material");
+        double chance = cfg.getDouble("chance", 30.0); // 30% территории по умолчанию
+        int revertTime = cfg.getInt("revert-time", 10); // Через сколько вернуть блоки обратно
 
+        if (materialName != null && isValidTarget(target)) {
+            Material mat = Material.matchMaterial(materialName.toUpperCase());
+            if (mat != null) {
+                actions.add(new BlockSpreadCustomAction(target, radius, mat, chance, revertTime));
+            }
+        }
+    }
     private static void loadParticleHitboxAction(ConfigurationSection actionConfig, String actionKey, String skinName,
                                                  List<CustomAction> actions, VioTrap plugin) {
 
         String target = actionConfig.getString("target", "p");
+        double radius = actionConfig.getDouble("radius", 5.0);
         String particleType = actionConfig.getString("particle-type");
         int duration = actionConfig.getInt("duration");
         int updateInterval = actionConfig.getInt("update-interval", 4);
@@ -188,7 +260,7 @@ public class CustomActionFactory {
         if (particleType != null && duration > 0 && updateInterval > 0 && isValidTarget(target)) {
             try {
                 Particle.valueOf(particleType.toUpperCase());
-                actions.add(new ParticleHitboxCustomAction(target, particleType.toUpperCase(), duration, updateInterval));
+                actions.add(new ParticleHitboxCustomAction(target, particleType.toUpperCase(), duration, updateInterval, radius));
             } catch (IllegalArgumentException e) {
             }
         } else {
@@ -205,7 +277,7 @@ public class CustomActionFactory {
                     if (isValidTarget(target) && duration > 0 && updateInterval > 0) {
                         try {
                             Particle.valueOf(particleType.toUpperCase());
-                            actions.add(new ParticleHitboxCustomAction(target, particleType.toUpperCase(), duration, updateInterval));
+                            actions.add(new ParticleHitboxCustomAction(target, particleType.toUpperCase(), duration, updateInterval, radius));
                         } catch (IllegalArgumentException e) {
                         }
                     }
@@ -219,7 +291,8 @@ public class CustomActionFactory {
         return target.equalsIgnoreCase("p") ||
                 target.equalsIgnoreCase("player") ||
                 target.equalsIgnoreCase("o") ||
-                target.equalsIgnoreCase("rp");
+                target.equalsIgnoreCase("rp") ||
+                target.equalsIgnoreCase("not-in");
     }
 
     public static Player getRandomPlayer(Player player, Player[] opponents) {

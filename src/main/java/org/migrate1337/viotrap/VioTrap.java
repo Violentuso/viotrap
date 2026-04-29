@@ -203,7 +203,7 @@ public final class VioTrap extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new ColorChatListener(this), this);
         getServer().getPluginManager().registerEvents(new org.migrate1337.viotrap.gui.TemplateImportMenu(this), this);
         this.getServer().getPluginManager().registerEvents(new PlateSkinCreationMenu(this), this);
-        DenyItemUseCustomAction denyListener = new DenyItemUseCustomAction("dummy", new HashSet<>());
+        DenyItemUseCustomAction denyListener = new DenyItemUseCustomAction("dummy", new HashSet<>(), 0.0);
         getServer().getPluginManager().registerEvents(denyListener, this);
 
         this.loadTrapConfig();

@@ -11,32 +11,20 @@ public class ParticleHitboxCustomAction implements CustomAction {
     private final String particleType;
     private final int duration;
     private final int updateInterval;
-
-    public ParticleHitboxCustomAction(String target, String particleType, int duration, int updateInterval) {
+    private final double radius;
+    public ParticleHitboxCustomAction(String target, String particleType, int duration, int updateInterval, double radius) {
         this.target = target.toLowerCase();
         this.particleType = particleType.toUpperCase();
         this.duration = duration;
         this.updateInterval = updateInterval;
+        this.radius = radius;
     }
 
+    @Override
     public void execute(Player player, Player[] opponents, VioTrap plugin) {
-        switch (this.target) {
-            case "p":
-            case "player":
-                this.spawnHitboxParticles(player, plugin);
-                break;
-            case "o":
-                for(Player opponent : opponents) {
-                    this.spawnHitboxParticles(opponent, plugin);
-                }
-                break;
-            case "rp":
-                Player randomPlayer = CustomActionFactory.getRandomPlayer(player, opponents);
-                this.spawnHitboxParticles(randomPlayer, plugin);
-                break;
-            default:
+        for (Player t : CustomActionFactory.getTargets(this.target, player, opponents, this.radius)) {
+            this.spawnHitboxParticles(t, plugin);
         }
-
     }
 
     private void spawnHitboxParticles(Player player, VioTrap plugin) {

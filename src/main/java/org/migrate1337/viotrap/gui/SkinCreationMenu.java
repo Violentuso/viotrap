@@ -29,7 +29,6 @@ public class SkinCreationMenu implements Listener {
     private final VioTrap plugin;
     private final Map<Player, String> currentSubMenu = new HashMap();
     private final Map<Player, String> editingActionKey = new HashMap();
-
     private final Map<Player, String> editingFlagKey = new HashMap();
 
     public SkinCreationMenu(VioTrap plugin) {
@@ -50,7 +49,6 @@ public class SkinCreationMenu implements Listener {
         } else {
             this.openMenu(player);
         }
-
     }
 
     private void updateMainMenuItems(Inventory inv) {
@@ -161,7 +159,6 @@ public class SkinCreationMenu implements Listener {
         inventory.setItem(26, this.createMenuItem(Material.BARRIER, ColorUtil.format("&#FF5555Назад"), ColorUtil.format("&#AEC1F2 • Вернуться в главное меню")));
     }
 
-
     private void updateActionsMenuItems(Inventory inv, Player player) {
         inv.clear();
         Map<String, String> actions = parseActions((String) plugin.getTempSkinData().getOrDefault("actions", ""));
@@ -172,30 +169,35 @@ public class SkinCreationMenu implements Listener {
             String value = entry.getValue();
             String[] parts = value.split(";", 2);
             String type = parts[0].toLowerCase();
-            String display;
 
+            String displayArgs = "?";
+            if (parts.length > 1) {
+                String[] args = parts[1].split(";");
+                String targetDisplay = args[0];
+
+                if (targetDisplay.equalsIgnoreCase("not-in") && args.length > 1) {
+                    targetDisplay += " (r=" + args[1] + ")";
+                }
+
+                StringBuilder sb = new StringBuilder(targetDisplay);
+                for (int i = 2; i < args.length; i++) {
+                    sb.append(" ").append(args[i]);
+                }
+                displayArgs = sb.toString();
+            }
+
+            String display;
             switch (type) {
-                case "effect":
-                    display = "Эффект: " + (parts.length > 1 ? parts[1] : "?");
-                    break;
-                case "command":
-                    display = "Команда: " + (parts.length > 1 ? parts[1] : "?");
-                    break;
-                case "teleportout":
-                    display = "Телепортация: " + (parts.length > 1 ? parts[1] : "?");
-                    break;
-                case "particlehitbox":
-                    display = "Частицы: " + (parts.length > 1 ? parts[1] : "?");
-                    break;
-                case "cooldownitem":
-                    display = "Кулдаун предметов: " + (parts.length > 1 ? parts[1] : "?");
-                    break;
-                case "denyitemuse":
-                    display = "Запрет предметов: " + (parts.length > 1 ? parts[1] : "?");
-                    break;
-                default:
-                    display = "Неизвестное действие";
-                    break;
+                case "effect": display = "Эффект: " + displayArgs; break;
+                case "command": display = "Команда: " + displayArgs; break;
+                case "teleportout": display = "Телепортация: " + displayArgs; break;
+                case "particlehitbox": display = "Частицы: " + displayArgs; break;
+                case "cooldownitem": display = "Кулдаун предм: " + displayArgs; break;
+                case "denyitemuse": display = "Запрет предм: " + displayArgs; break;
+                case "launch": display = "Подкидывание: " + displayArgs; break;
+                case "scrambleinventory": display = "Перемешка: " + displayArgs; break;
+                case "blockspread": display = "Блоки: " + displayArgs; break;
+                default: display = "Неизвестное действие"; break;
             }
 
             inv.setItem(slot++, createMenuItem(Material.PAPER,
@@ -243,6 +245,18 @@ public class SkinCreationMenu implements Listener {
                 ColorUtil.format("&#FF5555Запрет использования"),
                 ColorUtil.format("&#AEC1F2 • Запретить использовать предметы")));
 
+        inv.setItem(6, createMenuItem(Material.SLIME_BLOCK,
+                ColorUtil.format("&#55FF55Подкидывание"),
+                ColorUtil.format("&#AEC1F2 • Подкинуть игроков (игнорируя ловушку)")));
+
+        inv.setItem(7, createMenuItem(Material.HOPPER,
+                ColorUtil.format("&#FF55FFПеремешка инвентаря"),
+                ColorUtil.format("&#AEC1F2 • Перемешать хотбар игроку")));
+
+        inv.setItem(8, createMenuItem(Material.COBWEB,
+                ColorUtil.format("&#EAD7A2Заражение блоков"),
+                ColorUtil.format("&#AEC1F2 • Заменить блоки вокруг на другие")));
+
         inv.setItem(17, createMenuItem(Material.BARRIER,
                 ColorUtil.format("&#EB2D3AНазад"),
                 ColorUtil.format("&#AEC1F2 • Вернуться к действиям")));
@@ -280,9 +294,7 @@ public class SkinCreationMenu implements Listener {
         inventory.setItem(26, this.createMenuItem(Material.BARRIER, ColorUtil.format("&#EB2D3AНазад"), ColorUtil.format("&#AEC1F2 • Вернуться в главное меню")));
     }
 
-    @EventHandler(
-            priority = EventPriority.HIGHEST
-    )
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onInventoryClick(InventoryClickEvent event) {
         HumanEntity var3 = event.getWhoClicked();
         if (var3 instanceof Player) {
@@ -291,40 +303,19 @@ public class SkinCreationMenu implements Listener {
                 event.setCancelled(true);
                 ItemStack clickedItem = event.getCurrentItem();
                 if (clickedItem != null && clickedItem.getType() != Material.AIR) {
-                    String subMenu = (String)this.currentSubMenu.getOrDefault(player, "");
                     if (event.getView().getTitle().equals("Создание скина для трапки")) {
                         switch (event.getSlot()) {
-                            case 19:
-                                this.handleInput(player, "name", "Введите название скина:");
-                                break;
-
-                            case 20:
-                                this.handleInput(player, "schem", "Введите название схематики:");
-                                break;
-
-                            case 21:
-                                this.handleInput(player, "sound.type", "Введите тип звука (например, BLOCK_ANVIL_PLACE):");
-                                break;
-                            case 22:
-                                this.handleInput(player, "sound.type-ended", "Введите тип звука завершения (например, BLOCK_PISTON_EXTEND):");
-                                break;
-                            case 31:
-                                this.openActionsMenu(player);
-                                break;
-                            case 23:
-                                this.openFlagsMenu(player);
-                            default:
-                                break;
-                            case 24:
-                                this.handleInput(player, "cooldown", "Введите кулдаун в секундах (целое число):");
-                                break;
-                            case 25:
-                                this.handleInput(player, "duration", "Введите время действия в секундах (целое число):");
-                                break;
-                            case 40:
-                                this.saveSkin(player);
+                            case 19: this.handleInput(player, "name", "Введите название скина:"); break;
+                            case 20: this.handleInput(player, "schem", "Введите название схематики:"); break;
+                            case 21: this.handleInput(player, "sound.type", "Введите тип звука (например, BLOCK_ANVIL_PLACE):"); break;
+                            case 22: this.handleInput(player, "sound.type-ended", "Введите тип звука завершения (например, BLOCK_PISTON_EXTEND):"); break;
+                            case 31: this.openActionsMenu(player); break;
+                            case 23: this.openFlagsMenu(player); break;
+                            case 24: this.handleInput(player, "cooldown", "Введите кулдаун в секундах (целое число):"); break;
+                            case 25: this.handleInput(player, "duration", "Введите время действия в секундах (целое число):"); break;
+                            case 40: this.saveSkin(player); break;
                         }
-                    }  else if (event.getView().getTitle().equals("Действия скина")) {
+                    } else if (event.getView().getTitle().equals("Действия скина")) {
                         if (event.getSlot() == 26) {
                             this.currentSubMenu.remove(player);
                             this.updateMainMenu(player);
@@ -332,8 +323,7 @@ public class SkinCreationMenu implements Listener {
                             this.openActionTypeMenu(player);
                         } else if (event.getSlot() < 25) {
                             Map<String, String> actions = this.parseActions((String)this.plugin.getTempSkinData().getOrDefault("actions", ""));
-                            int var10000 = event.getSlot();
-                            String actionKey = "action" + (var10000 + 1);
+                            String actionKey = "action" + (event.getSlot() + 1);
                             if (actions.containsKey(actionKey)) {
                                 if (event.getClick() == ClickType.LEFT) {
                                     this.editingActionKey.put(player, actionKey);
@@ -346,7 +336,6 @@ public class SkinCreationMenu implements Listener {
                             }
                         }
                     } else if (event.getView().getTitle().equals("Выбор типа действия")) {
-
                         if (event.getSlot() == 17) {
                             this.openActionsMenu(player);
                         } else {
@@ -356,8 +345,11 @@ public class SkinCreationMenu implements Listener {
                                 case 1: type = "command"; break;
                                 case 2: type = "teleportout"; break;
                                 case 3: type = "particlehitbox"; break;
-                                case 4: type = "cooldownitem"; break;     // ← новое
-                                case 5: type = "denyitemuse"; break;      // ← новое
+                                case 4: type = "cooldownitem"; break;
+                                case 5: type = "denyitemuse"; break;
+                                case 6: type = "launch"; break;
+                                case 7: type = "scrambleinventory"; break;
+                                case 8: type = "blockspread"; break;
                             }
 
                             if (type != null) {
@@ -366,28 +358,31 @@ public class SkinCreationMenu implements Listener {
 
                                 switch (type) {
                                     case "effect":
-                                        handleInput(player, "action_effect",
-                                                "Введите: <p/o/rp> <эффект> <усилитель> <длительность>");
+                                        handleInput(player, "action_effect", "Формат: <p/o/rp/not-in> [радиус] <эффект> <сила> <время>");
                                         break;
                                     case "command":
-                                        handleInput(player, "action_command",
-                                                "Введите: <команда> <p/o/rp>");
+                                        handleInput(player, "action_command", "Формат: <p/o/rp/not-in> [радиус] <команда>");
                                         break;
                                     case "teleportout":
-                                        handleInput(player, "action_teleportout",
-                                                "Введите: <p/o/rp> <блоки> up");
+                                        handleInput(player, "action_teleportout", "Формат: <p/o/rp/not-in> [радиус] <блоки> up");
                                         break;
                                     case "particlehitbox":
-                                        handleInput(player, "action_particlehitbox",
-                                                "Введите: <p/o/rp> <particle> <длительность>");
+                                        handleInput(player, "action_particlehitbox", "Формат: <p/o/rp/not-in> [радиус] <частица> <время>");
                                         break;
                                     case "cooldownitem":
-                                        handleInput(player, "action_cooldownitem",
-                                                "Введите: <p/o/rp> <предмет1,предмет2,...> <секунды>");
+                                        handleInput(player, "action_cooldownitem", "Формат: <p/o/rp/not-in> [радиус] <предметы> <сек>");
                                         break;
                                     case "denyitemuse":
-                                        handleInput(player, "action_denyitemuse",
-                                                "Введите: <p/o/rp> <предмет1,предмет2,...>");
+                                        handleInput(player, "action_denyitemuse", "Формат: <p/o/rp/not-in> [радиус] <предметы>");
+                                        break;
+                                    case "launch":
+                                        handleInput(player, "action_launch", "Формат: <p/o/rp/not-in> [радиус] <сила_вверх> <сила_в_стороны>");
+                                        break;
+                                    case "scrambleinventory":
+                                        handleInput(player, "action_scrambleinventory", "Формат: <p/o/rp/not-in> [радиус]");
+                                        break;
+                                    case "blockspread":
+                                        handleInput(player, "action_blockspread", "Формат: <p/o/rp/not-in> [радиус] <материал> <шанс(%)> <возврат_сек>");
                                         break;
                                 }
                             }
@@ -400,8 +395,7 @@ public class SkinCreationMenu implements Listener {
                             this.handleInput(player, "flag_add", "Введите новый флаг (формат: <flag_name> <value>):");
                         } else if (event.getSlot() < 25) {
                             Map<String, String> flags = this.parseFlags((String)this.plugin.getTempSkinData().getOrDefault("flags", ""));
-                            int var15 = event.getSlot();
-                            String flagKey = "flag" + (var15 + 1);
+                            String flagKey = "flag" + (event.getSlot() + 1);
                             if (flags.containsKey(flagKey)) {
                                 if (event.getClick() == ClickType.LEFT) {
                                     this.editingFlagKey.put(player, flagKey);
@@ -412,7 +406,6 @@ public class SkinCreationMenu implements Listener {
                             }
                         }
                     }
-
                 }
             }
         }
@@ -434,7 +427,6 @@ public class SkinCreationMenu implements Listener {
                 } catch (NumberFormatException var13) {
                     player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AВведите целое число для кулдауна!"));
                 }
-
                 Bukkit.getScheduler().runTask(this.plugin, () -> this.updateMainMenu(player));
             } else if (key.equals("duration")) {
                 try {
@@ -448,103 +440,167 @@ public class SkinCreationMenu implements Listener {
                 } catch (NumberFormatException var12) {
                     player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AВведите целое число для времени действия!"));
                 }
-
                 Bukkit.getScheduler().runTask(this.plugin, () -> this.updateMainMenu(player));
             } else if (key.startsWith("action_")) {
                 String actionType = key.replace("action_", "");
                 Map<String, String> actions = this.parseActions((String)this.plugin.getTempSkinData().getOrDefault("actions", ""));
-                Map var10000 = this.editingActionKey;
-                int var10002 = actions.size();
-                String actionKey = (String)var10000.getOrDefault(player, "action" + (var10002 + 1));
-                if (actionType.equals("effect")) {
-                    String[] parts = input.split(" ", 4);
-                    if (parts.length != 4 || !this.isValidTarget(parts[0])) {
-                        player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AНекорректный формат эффекта. Ожидается: <p/o/rp> <effect> <amplifier> <duration>"));
-                        Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                        return;
-                    }
+                String actionKey = this.editingActionKey.getOrDefault(player, "action" + (actions.size() + 1));
 
-                    try {
-                        Integer.parseInt(parts[2]);
-                        Integer.parseInt(parts[3]);
-                    } catch (NumberFormatException var11) {
-                        player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AУсилитель и длительность должны быть числами!"));
-                        Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                        return;
-                    }
-
-                    actions.put(actionKey, "effect;" + String.join(";", parts));
-                } else if (actionType.equals("command")) {
-                    String[] parts = input.split(" ", 2);
-                    if (parts.length != 2 || !this.isValidTarget(parts[1])) {
-                        player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AНекорректный формат команды. Ожидается: <command> <p/o/rp>"));
-                        Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                        return;
-                    }
-
-                    actions.put(actionKey, "command;" + String.join(";", parts));
-                } else if (actionType.equals("teleportout")) {
-                    String[] parts = input.split(" ", 3);
-                    if (parts.length != 3 || !this.isValidTarget(parts[0]) || !parts[2].equalsIgnoreCase("up")) {
-                        player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AНекорректный формат телепортации. Ожидается: <p/o/rp> <blocks> up"));
-                        Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                        return;
-                    }
-
-                    try {
-                        Integer.parseInt(parts[1]);
-                    } catch (NumberFormatException var10) {
-                        player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AКоличество блоков должно быть числом!"));
-                        Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                        return;
-                    }
-
-                    actions.put(actionKey, "teleportout;" + String.join(";", parts));
-                } else if (actionType.equals("particlehitbox")) {
-                    String[] parts = input.split(" ", 3);
-                    if (parts.length != 3 || !this.isValidTarget(parts[0])) {
-                        player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AНекорректный формат частиц. Ожидается: <p/o/rp> <particle> <duration>"));
-                        Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                        return;
-                    }
-
-                    try {
-                        Integer.parseInt(parts[2]);
-                    } catch (NumberFormatException var9) {
-                        player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AДлительность должна быть числом!"));
-                        Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                        return;
-                    }
-
-                    actions.put(actionKey, "particlehitbox;" + String.join(";", parts));
-                }  else if (actionType.equals("cooldownitem")) {
-                    String[] parts = input.split(" ", 3);
-                    if (parts.length != 3 || !isValidTarget(parts[0])) {
-                        player.sendMessage("§cНекорректный формат. Ожидается: <p/o/rp> <предмет1,предмет2,...> <секунды>");
-                        Bukkit.getScheduler().runTask(plugin, () -> openActionsMenu(player));
-                        return;
-                    }
-
-                    try {
-                        Integer.parseInt(parts[2]);
-                    } catch (NumberFormatException e) {
-                        player.sendMessage("§cКоличество секунд — целое число!");
-                        Bukkit.getScheduler().runTask(plugin, () -> openActionsMenu(player));
-                        return;
-                    }
-
-                    actions.put(actionKey, "cooldownitem;" + String.join(";", parts));
-                } else if (actionType.equals("denyitemuse")) {
-                    String[] parts = input.split(" ", 2);
-                    if (parts.length != 2 || !isValidTarget(parts[0])) {
-                        player.sendMessage("§cНекорректный формат. Ожидается: <p/o/rp> <предмет1,предмет2,...>");
-                        Bukkit.getScheduler().runTask(plugin, () -> openActionsMenu(player));
-                        return;
-                    }
-
-                    actions.put(actionKey, "denyitemuse;" + String.join(";", parts));
+                String[] tokens = input.split(" ");
+                if (tokens.length < 1 || !isValidTarget(tokens[0])) {
+                    player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AНекорректный таргет. Допустимые: p, o, rp, not-in"));
+                    Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                    return;
                 }
 
+                String target = tokens[0];
+                double radius = 5.0;
+                int offset = 1;
+
+                if (target.equalsIgnoreCase("not-in")) {
+                    if (tokens.length < 2) {
+                        player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AДля таргета not-in необходимо указать радиус!"));
+                        Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                        return;
+                    }
+                    try {
+                        radius = Double.parseDouble(tokens[1]);
+                        offset = 2;
+                    } catch (NumberFormatException e) {
+                        player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AРадиус должен быть числом!"));
+                        Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                        return;
+                    }
+                }
+
+                switch (actionType) {
+                    case "effect":
+                        if (tokens.length - offset != 3) {
+                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <эффект> <сила> <время>");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        try {
+                            Integer.parseInt(tokens[offset + 1]);
+                            Integer.parseInt(tokens[offset + 2]);
+                        } catch (Exception e) {
+                            player.sendMessage("§cСила и время должны быть числами!");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        actions.put(actionKey, "effect;" + target + ";" + radius + ";" + tokens[offset] + ";" + tokens[offset+1] + ";" + tokens[offset+2]);
+                        break;
+
+                    case "command":
+                        if (tokens.length - offset < 1) {
+                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <команда>");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        String cmd = String.join(" ", Arrays.copyOfRange(tokens, offset, tokens.length));
+                        actions.put(actionKey, "command;" + target + ";" + radius + ";" + cmd);
+                        break;
+
+                    case "teleportout":
+                        if (tokens.length - offset != 2 || !tokens[offset+1].equalsIgnoreCase("up")) {
+                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <блоки> up");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        try { Integer.parseInt(tokens[offset]); } catch (Exception e) {
+                            player.sendMessage("§cКоличество блоков должно быть числом!");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        actions.put(actionKey, "teleportout;" + target + ";" + radius + ";" + tokens[offset]);
+                        break;
+
+                    case "particlehitbox":
+                        if (tokens.length - offset != 2) {
+                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <частица> <время>");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        try { Integer.parseInt(tokens[offset+1]); } catch (Exception e) {
+                            player.sendMessage("§cВремя должно быть числом!");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        actions.put(actionKey, "particlehitbox;" + target + ";" + radius + ";" + tokens[offset] + ";" + tokens[offset+1]);
+                        break;
+
+                    case "cooldownitem":
+                        if (tokens.length - offset != 2) {
+                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <предметы> <сек>");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        try { Integer.parseInt(tokens[offset+1]); } catch (Exception e) {
+                            player.sendMessage("§cВремя должно быть числом!");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        actions.put(actionKey, "cooldownitem;" + target + ";" + radius + ";" + tokens[offset] + ";" + tokens[offset+1]);
+                        break;
+
+                    case "denyitemuse":
+                        if (tokens.length - offset != 1) {
+                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <предметы>");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        actions.put(actionKey, "denyitemuse;" + target + ";" + radius + ";" + tokens[offset]);
+                        break;
+
+                    case "launch":
+                        if (tokens.length - offset != 2) {
+                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <сила_вверх> <сила_в_стороны>");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        try {
+                            Double.parseDouble(tokens[offset]);
+                            Double.parseDouble(tokens[offset+1]);
+                        } catch (Exception e) {
+                            player.sendMessage("§cСила должна быть числом!");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        actions.put(actionKey, "launch;" + target + ";" + radius + ";" + tokens[offset] + ";" + tokens[offset+1]);
+                        break;
+
+                    case "scrambleinventory":
+                        if (tokens.length - offset != 0) {
+                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус]");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        actions.put(actionKey, "scrambleinventory;" + target + ";" + radius);
+                        break;
+
+                    case "blockspread":
+                        if (tokens.length - offset != 3) {
+                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <материал> <шанс(%)> <возврат_сек>");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        Material mat = Material.matchMaterial(tokens[offset].toUpperCase());
+                        if (mat == null) {
+                            player.sendMessage("§cУказанный материал " + tokens[offset] + " не найден!");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        try {
+                            Double.parseDouble(tokens[offset+1]);
+                            Integer.parseInt(tokens[offset+2]);
+                        } catch (Exception e) {
+                            player.sendMessage("§cШанс должен быть числом (например 30.5), а секунды - целым числом!");
+                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                            return;
+                        }
+                        actions.put(actionKey, "blockspread;" + target + ";" + radius + ";" + tokens[offset].toUpperCase() + ";" + tokens[offset+1] + ";" + tokens[offset+2]);
+                        break;
+                }
 
                 this.plugin.getTempSkinData().put("actions", this.serializeActions(actions));
                 this.editingActionKey.remove(player);
@@ -567,7 +623,6 @@ public class SkinCreationMenu implements Listener {
                         Bukkit.getScheduler().runTask(this.plugin, () -> this.openFlagsMenu(player));
                         return;
                     }
-
                     State.valueOf(flagValue);
                 } catch (IllegalArgumentException var14) {
                     player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AНекорректное значение флага. Ожидается: ALLOW или DENY"));
@@ -586,7 +641,6 @@ public class SkinCreationMenu implements Listener {
                 player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#ADD8E6Значение '" + key + "' установлено: " + input));
                 Bukkit.getScheduler().runTask(this.plugin, () -> this.updateMainMenu(player));
             }
-
         });
     }
 
@@ -603,7 +657,6 @@ public class SkinCreationMenu implements Listener {
                 String[] newParts = input.split(" ", 2);
                 if (newParts.length == 2 && newParts[0].equalsIgnoreCase(currentFlag)) {
                     String newValue = newParts[1].toUpperCase();
-
                     try {
                         StateFlag flag = (StateFlag)WorldGuard.getInstance().getFlagRegistry().get(currentFlag);
                         if (flag == null) {
@@ -611,14 +664,12 @@ public class SkinCreationMenu implements Listener {
                             Bukkit.getScheduler().runTask(this.plugin, () -> this.openFlagsMenu(player));
                             return;
                         }
-
                         State.valueOf(newValue);
                     } catch (IllegalArgumentException var9) {
                         player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AНекорректное значение флага. Ожидается: ALLOW или DENY"));
                         Bukkit.getScheduler().runTask(this.plugin, () -> this.openFlagsMenu(player));
                         return;
                     }
-
                     flags.put(flagKey, currentFlag + ":" + newValue);
                     this.plugin.getTempSkinData().put("flags", this.serializeFlags(flags));
                     player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#ADD8E6Флаг '" + currentFlag + "' обновлен: " + newValue));
@@ -633,7 +684,6 @@ public class SkinCreationMenu implements Listener {
             player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AНекорректный ключ флага."));
             Bukkit.getScheduler().runTask(this.plugin, () -> this.openFlagsMenu(player));
         }
-
     }
 
     private void removeFlag(Player player, String flagKey) {
@@ -646,7 +696,6 @@ public class SkinCreationMenu implements Listener {
         } else {
             player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AНекорректный ключ флага."));
         }
-
         Bukkit.getScheduler().runTask(this.plugin, () -> this.openFlagsMenu(player));
     }
 
@@ -656,26 +705,22 @@ public class SkinCreationMenu implements Listener {
             return actions;
         } else {
             String[] actionEntries = actionsStr.split("\\|");
-
             for(String entry : actionEntries) {
                 String[] parts = entry.split(":", 2);
                 if (parts.length == 2) {
                     actions.put(parts[0], parts[1]);
                 }
             }
-
             return actions;
         }
     }
 
     private String serializeActions(Map<String, String> actions) {
         List<String> entries = new ArrayList();
-
         for(Map.Entry<String, String> entry : actions.entrySet()) {
             String var10001 = (String)entry.getKey();
             entries.add(var10001 + ":" + (String)entry.getValue());
         }
-
         return String.join("|", entries);
     }
 
@@ -685,31 +730,27 @@ public class SkinCreationMenu implements Listener {
             return flags;
         } else {
             String[] flagEntries = flagsStr.split("\\|");
-
             for(String entry : flagEntries) {
                 String[] parts = entry.split(":", 2);
                 if (parts.length == 2) {
                     flags.put(parts[0], parts[1]);
                 }
             }
-
             return flags;
         }
     }
 
     private String serializeFlags(Map<String, String> flags) {
         List<String> entries = new ArrayList();
-
         for(Map.Entry<String, String> entry : flags.entrySet()) {
             String var10001 = (String)entry.getKey();
             entries.add(var10001 + ":" + (String)entry.getValue());
         }
-
         return String.join("|", entries);
     }
 
     private boolean isValidTarget(String target) {
-        return target.equalsIgnoreCase("p") || target.equalsIgnoreCase("o") || target.equalsIgnoreCase("rp");
+        return target.equalsIgnoreCase("p") || target.equalsIgnoreCase("o") || target.equalsIgnoreCase("rp") || target.equalsIgnoreCase("not-in");
     }
 
     private void handleActionEdit(Player player, String actionKey) {
@@ -718,34 +759,46 @@ public class SkinCreationMenu implements Listener {
             String actionData = (String)actions.get(actionKey);
             String[] parts = actionData.split(";", 2);
             String type = parts[0];
-            String data = parts.length > 1 ? parts[1].split(";", 2)[0] : "";
+            String data = parts.length > 1 ? parts[1].replace(";", " ") : "";
             switch (type.toLowerCase()) {
                 case "effect":
-                    this.handleInput(player, "action_effect", "Введите новый эффект (формат: <p/o/rp> <effect> <amplifier> <duration>, текущий: " + data + "):");
+                    this.handleInput(player, "action_effect", "Формат: <target> [radius] <эффект> <сила> <время>\nТекущий: " + data);
                     break;
                 case "command":
-                    this.handleInput(player, "action_command", "Введите новую команду (формат: <command> <p/o/rp>, текущая: " + data + "):");
+                    this.handleInput(player, "action_command", "Формат: <target> [radius] <команда>\nТекущая: " + data);
                     break;
                 case "teleportout":
-                    this.handleInput(player, "action_teleportout", "Введите новую телепортацию (формат: <p/o/rp> <blocks> up, текущая: " + data + "):");
+                    this.handleInput(player, "action_teleportout", "Формат: <target> [radius] <блоки> up\nТекущая: " + data);
                     break;
                 case "particlehitbox":
-                    this.handleInput(player, "action_particlehitbox", "Введите новые частицы (формат: <p/o/rp> <particle> <duration>, текущие: " + data + "):");
+                    this.handleInput(player, "action_particlehitbox", "Формат: <target> [radius] <частица> <время>\nТекущие: " + data);
+                    break;
+                case "cooldownitem":
+                    this.handleInput(player, "action_cooldownitem", "Формат: <target> [radius] <предметы> <сек>\nТекущие: " + data);
+                    break;
+                case "denyitemuse":
+                    this.handleInput(player, "action_denyitemuse", "Формат: <target> [radius] <предметы>\nТекущие: " + data);
+                    break;
+                case "launch":
+                    this.handleInput(player, "action_launch", "Формат: <target> [radius] <сила_вверх> <сила_в_стороны>\nТекущее: " + data);
+                    break;
+                case "scrambleinventory":
+                    this.handleInput(player, "action_scrambleinventory", "Формат: <target> [radius]\nТекущий: " + data);
+                    break;
+                case "blockspread":
+                    this.handleInput(player, "action_blockspread", "Формат: <target> [radius] <материал> <шанс(%)> <возврат_сек>\nТекущее: " + data);
                     break;
                 default:
                     player.sendMessage("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AНеизвестный тип действия: " + type);
                     this.openActionsMenu(player);
             }
         }
-
     }
 
     private void saveSkin(Player player) {
         String skinName = (String) this.plugin.getTempSkinData().get("name");
-
         String schematic = (String) this.plugin.getTempSkinData().get("schem");
         String sound = (String) this.plugin.getTempSkinData().get("sound.type");
-
         String soundEnded = (String) this.plugin.getTempSkinData().getOrDefault("sound.type-ended", "ENTITY_WITHER_AMBIENT");
 
         Object cooldownObj = this.plugin.getTempSkinData().get("cooldown");
@@ -758,12 +811,10 @@ public class SkinCreationMenu implements Listener {
 
         if (skinName != null && schematic != null && sound != null && cooldown != null && duration != null) {
 
-
             List<String> coloredDesc = new ArrayList<>();
             for (String line : descriptionLines) {
                 coloredDesc.add(ChatColor.translateAlternateColorCodes('&', line));
             }
-
 
             this.plugin.getConfig().set("skins." + skinName + ".schem", schematic);
             this.plugin.getConfig().set("skins." + skinName + ".sound.type", sound);
@@ -781,9 +832,8 @@ public class SkinCreationMenu implements Listener {
                 return;
             }
 
-
             Map<String, String> actions = this.parseActions((String)this.plugin.getTempSkinData().getOrDefault("actions", ""));
-            this.plugin.getConfig().set("skins." + skinName + ".actions", null); // Очистка старого
+            this.plugin.getConfig().set("skins." + skinName + ".actions", null);
 
             for(Map.Entry<String, String> actionEntry : actions.entrySet()) {
                 String actionKey = (String)actionEntry.getKey();
@@ -791,70 +841,69 @@ public class SkinCreationMenu implements Listener {
                 if (actionData == null) continue;
 
                 String[] parts = actionData.split(";");
-                if (parts.length > 0) {
+                if (parts.length >= 3) {
                     String type = parts[0];
+                    String target = parts[1];
+                    double radius = Double.parseDouble(parts[2]);
                     String basePath = "skins." + skinName + ".actions." + actionKey;
 
                     this.plugin.getConfig().set(basePath + ".type", type);
 
                     switch (type.toLowerCase()) {
                         case "effect":
-                            if (parts.length >= 5) {
-                                this.plugin.getConfig().set(basePath + ".target", parts[1]);
-                                this.plugin.getConfig().set(basePath + ".effect", parts[2]);
-                                try {
-                                    this.plugin.getConfig().set(basePath + ".amplifier", Integer.parseInt(parts[3]));
-                                    this.plugin.getConfig().set(basePath + ".duration", Integer.parseInt(parts[4]));
-                                } catch (NumberFormatException e) {
-                                }
-                            }
+                            this.plugin.getConfig().set(basePath + ".target", target);
+                            this.plugin.getConfig().set(basePath + ".radius", radius);
+                            this.plugin.getConfig().set(basePath + ".effect", parts[3]);
+                            this.plugin.getConfig().set(basePath + ".amplifier", Integer.parseInt(parts[4]));
+                            this.plugin.getConfig().set(basePath + ".duration", Integer.parseInt(parts[5]));
                             break;
                         case "command":
-
-                            if (parts.length >= 3) {
-                                this.plugin.getConfig().set(basePath + ".command", parts[1]);
-                                this.plugin.getConfig().set(basePath + ".target", parts[2]);
-                            }
+                            this.plugin.getConfig().set(basePath + ".radius", radius);
+                            this.plugin.getConfig().set(basePath + ".command", parts[3] + " " + target);
                             break;
                         case "teleportout":
-
-                            if (parts.length >= 3) {
-                                this.plugin.getConfig().set(basePath + ".target", parts[1]);
-                                try {
-                                    this.plugin.getConfig().set(basePath + ".min-height", Integer.parseInt(parts[2]));
-                                } catch (NumberFormatException e) {}
-                            }
+                            this.plugin.getConfig().set(basePath + ".radius", radius);
+                            this.plugin.getConfig().set(basePath + ".teleport", target + " " + parts[3] + " up");
+                            this.plugin.getConfig().set(basePath + ".min-height", 10);
                             break;
                         case "particlehitbox":
-
-                            if (parts.length >= 4) {
-                                this.plugin.getConfig().set(basePath + ".target", parts[1]);
-                                this.plugin.getConfig().set(basePath + ".particle", parts[2]);
-                                try {
-                                    this.plugin.getConfig().set(basePath + ".duration", Integer.parseInt(parts[3]));
-                                } catch (NumberFormatException e) {}
-                            }
+                            this.plugin.getConfig().set(basePath + ".target", target);
+                            this.plugin.getConfig().set(basePath + ".radius", radius);
+                            this.plugin.getConfig().set(basePath + ".particle-type", parts[3]);
+                            this.plugin.getConfig().set(basePath + ".duration", Integer.parseInt(parts[4]));
+                            this.plugin.getConfig().set(basePath + ".update-interval", 4);
                             break;
                         case "cooldownitem":
-                            if (parts.length >= 4) {
-                                this.plugin.getConfig().set(basePath + ".target", parts[1]);
-                                this.plugin.getConfig().set(basePath + ".items", parts[2].split(","));
-                                try {
-                                    this.plugin.getConfig().set(basePath + ".seconds", Integer.parseInt(parts[3]));
-                                } catch (NumberFormatException e) {}
-                            }
+                            this.plugin.getConfig().set(basePath + ".target", target);
+                            this.plugin.getConfig().set(basePath + ".radius", radius);
+                            this.plugin.getConfig().set(basePath + ".items", Arrays.asList(parts[3].split(",")));
+                            this.plugin.getConfig().set(basePath + ".seconds", Integer.parseInt(parts[4]));
                             break;
-
                         case "denyitemuse":
-                            if (parts.length >= 3) {
-                                this.plugin.getConfig().set(basePath + ".target", parts[1]);
-                                this.plugin.getConfig().set(basePath + ".items", parts[2].split(","));
-                            }
+                            this.plugin.getConfig().set(basePath + ".target", target);
+                            this.plugin.getConfig().set(basePath + ".radius", radius);
+                            this.plugin.getConfig().set(basePath + ".items", Arrays.asList(parts[3].split(",")));
+                            break;
+                        case "launch":
+                            this.plugin.getConfig().set(basePath + ".target", target);
+                            this.plugin.getConfig().set(basePath + ".radius", radius);
+                            this.plugin.getConfig().set(basePath + ".upward-force", Double.parseDouble(parts[3]));
+                            this.plugin.getConfig().set(basePath + ".horizontal-force", Double.parseDouble(parts[4]));
+                            break;
+                        case "scrambleinventory":
+                            this.plugin.getConfig().set(basePath + ".target", target);
+                            this.plugin.getConfig().set(basePath + ".radius", radius);
+                            break;
+                        case "blockspread":
+                            this.plugin.getConfig().set(basePath + ".target", target);
+                            this.plugin.getConfig().set(basePath + ".radius", radius);
+                            this.plugin.getConfig().set(basePath + ".material", parts[3]);
+                            this.plugin.getConfig().set(basePath + ".chance", Double.parseDouble(parts[4]));
+                            this.plugin.getConfig().set(basePath + ".revert-time", Integer.parseInt(parts[5]));
                             break;
                     }
                 }
             }
-
 
             Map<String, String> flags = this.parseFlags((String)this.plugin.getTempSkinData().getOrDefault("flags", ""));
             this.plugin.getConfig().set("skins." + skinName + ".flags", null);

@@ -107,13 +107,15 @@ public class ParticleEditorManager {
         item.setItemMeta(meta);
         return item;
     }
-    // --- ОБНОВЛЕННАЯ КИСТЬ (ТЕПЕРЬ ПЛОСКИЙ КРУГ) ---
+    // --- ОБНОВЛЕННАЯ КИСТЬ (ТЕПЕРЬ ПЛОСКИЙ КРУГ, БЕЗ ЛИМИТОВ) ---
     public void handleBrushClick(Player player, Vector exactHitPos, org.bukkit.block.BlockFace face, boolean addPoint) {
         EditorSession session = activeSessions.get(player.getUniqueId());
         if (session == null) return;
 
+        // Получаем позицию клика относительно центра арены
         Vector relativePos = exactHitPos.clone().subtract(session.getArenaCenter().toVector());
-        if (Math.abs(relativePos.getX()) > 3.5 || Math.abs(relativePos.getY()) > 3.5 || Math.abs(relativePos.getZ()) > 3.5) return;
+
+        // УДАЛЕНО: Ограничитель Math.abs(relativePos.getX()) > 3.5 ...
 
         int size = session.getBrushSize();
         // Максимальный размер кисти 15 будет давать радиус 1.4 блока

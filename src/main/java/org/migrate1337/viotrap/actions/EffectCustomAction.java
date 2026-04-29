@@ -10,42 +10,28 @@ public class EffectCustomAction implements CustomAction {
     private final String effectName;
     private final int amplifier;
     private final int duration;
-
-    public EffectCustomAction(String target, String effectName, int amplifier, int duration) {
+    private final double radius;
+    public EffectCustomAction(String target, String effectName, int amplifier, int duration, double radius) {
         this.target = target.toLowerCase();
         this.effectName = effectName.toUpperCase();
         this.amplifier = amplifier;
         this.duration = duration;
+        this.radius = radius;
     }
 
+    @Override
     public void execute(Player player, Player[] opponents, VioTrap plugin) {
         PotionEffectType effectType;
         try {
             effectType = PotionEffectType.getByName(this.effectName);
-            if (effectType == null) {
-                return;
-            }
+            if (effectType == null) return;
         } catch (Exception var11) {
             return;
         }
 
-        switch (this.target) {
-            case "p":
-            case "player":
-                this.applyEffect(player, effectType);
-                break;
-            case "o":
-                for(Player opponent : opponents) {
-                    this.applyEffect(opponent, effectType);
-                }
-                break;
-            case "rp":
-                Player randomPlayer = CustomActionFactory.getRandomPlayer(player, opponents);
-                this.applyEffect(randomPlayer, effectType);
-                break;
-            default:
+        for (Player t : CustomActionFactory.getTargets(this.target, player, opponents, this.radius)) {
+            this.applyEffect(t, effectType);
         }
-
     }
 
     private void applyEffect(Player player, PotionEffectType effectType) {
