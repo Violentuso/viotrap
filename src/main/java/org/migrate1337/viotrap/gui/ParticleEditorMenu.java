@@ -23,7 +23,7 @@ public class ParticleEditorMenu implements Listener {
     private final VioTrap plugin;
     private final String menuTitle = "§8Редактор партиклов";
 
-    // Память страниц
+     
     private final Map<UUID, Integer> playerPages = new HashMap<>();
 
     public ParticleEditorMenu(VioTrap plugin) {
@@ -37,7 +37,7 @@ public class ParticleEditorMenu implements Listener {
     public void open(Player player, int page) {
         Inventory inv = Bukkit.createInventory(null, 54, menuTitle);
 
-        // Кнопка: Создать с нуля
+         
         ItemStack cubePreset = new ItemStack(Material.STONE);
         ItemMeta cubeMeta = cubePreset.getItemMeta();
         if (cubeMeta != null) {
@@ -50,7 +50,7 @@ public class ParticleEditorMenu implements Listener {
         }
         inv.setItem(4, cubePreset);
 
-        // Декоративное стекло
+         
         ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta glassMeta = glass.getItemMeta();
         if (glassMeta != null) {
@@ -61,15 +61,15 @@ public class ParticleEditorMenu implements Listener {
             inv.setItem(i, glass);
         }
 
-        // Собираем все названия шаблонов
+         
         List<String> allPatterns = new ArrayList<>();
         ConfigurationSection section = plugin.getConfig().getConfigurationSection("custom_patterns");
         if (section != null) {
             allPatterns.addAll(section.getKeys(false));
         }
 
-        // --- МАТЕМАТИКА СТРАНИЦ ---
-        int itemsPerPage = 27; // Слоты с 18 по 44
+         
+        int itemsPerPage = 27;  
         int totalPages = (int) Math.ceil((double) allPatterns.size() / itemsPerPage);
         if (totalPages == 0) totalPages = 1;
 
@@ -78,7 +78,7 @@ public class ParticleEditorMenu implements Listener {
 
         playerPages.put(player.getUniqueId(), page);
 
-        // Расставляем предметы
+         
         int startIndex = page * itemsPerPage;
         int slot = 18;
         for (int i = startIndex; i < Math.min(startIndex + itemsPerPage, allPatterns.size()); i++) {
@@ -96,7 +96,7 @@ public class ParticleEditorMenu implements Listener {
             inv.setItem(slot++, patternItem);
         }
 
-        // Кнопки навигации
+         
         if (page > 0) {
             inv.setItem(45, createNavButton("§a◀ Предыдущая страница"));
         }
@@ -128,7 +128,7 @@ public class ParticleEditorMenu implements Listener {
         ItemStack clicked = event.getCurrentItem();
         if (clicked == null || clicked.getType() == Material.AIR) return;
 
-        // Обработка стрелочек
+         
         if (clicked.getType() == Material.ARROW && clicked.hasItemMeta()) {
             String name = clicked.getItemMeta().getDisplayName();
             int currentPage = playerPages.getOrDefault(player.getUniqueId(), 0);
@@ -142,18 +142,32 @@ public class ParticleEditorMenu implements Listener {
             return;
         }
 
-        String tempPatternName = player.getName() + "_pattern_" + (System.currentTimeMillis() / 1000);
-
         if (clicked.getType() == Material.STONE) {
             player.closeInventory();
-            plugin.getParticleEditorManager().startEditorSession(player, tempPatternName, null);
+            player.sendMessage("§e[VioTrap] §aВведите название для нового шаблона (без пробелов):");
+
+            plugin.getChatInputHandler().waitForInput(player, (input) -> {
+                 
+                String safeName = input.replace(" ", "_").replaceAll("[^a-zA-Z0-9_\\-]", "");
+
+                if (safeName.isEmpty()) {
+                    player.sendMessage("§cНекорректное название!");
+                    return;
+                }
+
+
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    plugin.getParticleEditorManager().startEditorSession(player, safeName, null);
+                });
+            });
             return;
         }
 
         if (clicked.getType() == Material.BLAZE_POWDER && clicked.hasItemMeta()) {
             player.closeInventory();
             String existingTemplate = org.bukkit.ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
-            plugin.getParticleEditorManager().startEditorSession(player, tempPatternName, existingTemplate);
+             
+            plugin.getParticleEditorManager().startEditorSession(player, existingTemplate, existingTemplate);
         }
     }
 }

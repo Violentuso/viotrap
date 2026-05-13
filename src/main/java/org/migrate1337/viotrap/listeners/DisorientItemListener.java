@@ -1,8 +1,3 @@
-
-
-
-
-
 package org.migrate1337.viotrap.listeners;
 
 import com.github.sirblobman.combatlogx.api.object.TagReason;
@@ -53,10 +48,12 @@ public class DisorientItemListener implements Listener {
             if (item == null || item.getType().isAir() || item.getAmount() <= 0) {
                 return;
             }
+
             if (event.getAction().toString().contains("RIGHT_CLICK")) {
-                if (!plugin.getConditionManager().checkConditions(player, "disorient_item")) {
+                if (!this.plugin.getConditionManager().checkConditions(player, "disorient_item")) {
                     return;
                 }
+
                 if (player.hasCooldown(item.getType())) {
                     player.sendMessage("§cПодождите перед использованием снова!");
                 } else {
@@ -68,7 +65,7 @@ public class DisorientItemListener implements Listener {
                         boolean foundOpponent = false;
                         player.sendMessage(this.plugin.getConfig().getString("disorient_item.messages.success_used"));
 
-                        for (Player nearbyPlayer : playerLocation.getWorld().getPlayers()) {
+                        for(Player nearbyPlayer : playerLocation.getWorld().getPlayers()) {
                             if (!nearbyPlayer.equals(player) && nearbyPlayer.getLocation().distance(playerLocation) <= (double)radius) {
                                 foundOpponent = true;
                                 if (this.combatLogXHandler.isCombatLogXEnabled()) {
@@ -105,21 +102,22 @@ public class DisorientItemListener implements Listener {
                             this.pvpManagerHandler.tagPlayerForPvP(player, "disorient_item");
                             player.sendMessage(this.plugin.getConfig().getString("disorient_item.messages.pvp-enabled-by-player"));
                         }
+
                         int cooldownSeconds = this.plugin.getDisorientItemCooldown();
                         player.setCooldown(item.getType(), cooldownSeconds * 20);
                         item.setAmount(item.getAmount() - 1);
-
                         String soundType = this.plugin.getDisorientItemSoundType();
                         float volume = this.plugin.getDisorientItemSoundVolume();
                         float pitch = this.plugin.getDisorientItemSoundPitch();
                         player.playSound(playerLocation, Sound.valueOf(soundType), volume, pitch);
-                        this.showParticleCircle(playerLocation, (double)radius, Particle.valueOf(VioTrap.getPlugin().getDisorientItemParticleType()));
+                        this.showParticleExplosion(playerLocation, (double)radius, Particle.valueOf(VioTrap.getPlugin().getDisorientItemParticleType()));
                     } else {
                         player.sendMessage("§cВы не можете использовать данный предмет в этом регионе!");
                     }
                 }
             }
         }
+
     }
 
     private boolean isInBannedRegion(Location location, String worldName) {
@@ -164,16 +162,16 @@ public class DisorientItemListener implements Listener {
         }
     }
 
-    private void showParticleCircle(Location center, double radius, Particle particle) {
-        int points = 100;
-        double increment = (Math.PI * 2D) / (double)points;
+    private void showParticleExplosion(Location center, double radius, Particle particle) {
+        int particleCount = this.plugin.getConfig().getInt("disorient_item.particle_count", 8);
+        double speed = this.plugin.getConfig().getDouble("disorient_item.particle_speed", 0.3);
 
-        for(int i = 0; i < points; ++i) {
-            double angle = (double)i * increment;
-            double x = center.getX() + radius * Math.cos(angle);
-            double z = center.getZ() + radius * Math.sin(angle);
-            Location particleLocation = new Location(center.getWorld(), x, center.getY(), z);
-            center.getWorld().spawnParticle(particle, particleLocation, 1, (double)0.0F, (double)0.0F, (double)0.0F, (double)0.0F);
+        for(int i = 0; i < particleCount; ++i) {
+            double angle = (Math.PI * 2D) / (double)particleCount * (double)i;
+            double spawnOffsetX = Math.cos(angle) * 0.8;
+            double spawnOffsetZ = Math.sin(angle) * 0.8;
+            Location particleLocation = new Location(center.getWorld(), center.getX(), center.getY() + 0.1, center.getZ());
+            center.getWorld().spawnParticle(particle, particleLocation, 0, spawnOffsetX, (double)0.0F, spawnOffsetZ, speed);
         }
 
     }

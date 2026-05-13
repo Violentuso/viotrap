@@ -34,7 +34,7 @@ public class LaunchCustomAction implements CustomAction {
     private void applyVelocity(Player center, Player target) {
         Vector direction = target.getLocation().toVector().subtract(center.getLocation().toVector());
 
-        // Если игроки стоят ровно в одних координатах, откидываем в случайную сторону
+         
         if (direction.lengthSquared() == 0) {
             direction = new Vector(Math.random() - 0.5, 0, Math.random() - 0.5);
         }

@@ -83,7 +83,7 @@ public class ConditionEditorMenu implements Listener {
     }
 
     private void openAddConditionMenu(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 54, "Добавить условие"); // Увеличено до 54 для новых условий
+        Inventory inv = Bukkit.createInventory(null, 54, "Добавить условие");  
         fillBorders(inv);
 
         int slot = 10;
@@ -93,7 +93,7 @@ public class ConditionEditorMenu implements Listener {
             meta.setLocalizedName(type.name());
             item.setItemMeta(meta);
             inv.setItem(slot++, item);
-            if ((slot + 1) % 9 == 0) slot += 2; // Перенос строки
+            if ((slot + 1) % 9 == 0) slot += 2;  
         }
 
         inv.setItem(49, createItem(Material.BARRIER, "&#FF5555Назад", ""));

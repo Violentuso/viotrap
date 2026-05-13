@@ -1,3 +1,8 @@
+//
+// Source code recreated from a .class file by IntelliJ IDEA
+// (powered by Fernflower decompiler)
+//
+
 package org.migrate1337.viotrap.listeners;
 
 import com.github.sirblobman.combatlogx.api.object.TagReason;
@@ -48,10 +53,12 @@ public class RevealItemListener implements Listener {
             if (item == null || item.getType().isAir() || item.getAmount() <= 0) {
                 return;
             }
+
             if (event.getAction().toString().contains("RIGHT_CLICK")) {
-                if (!plugin.getConditionManager().checkConditions(player, "reveal_item")) {
+                if (!this.plugin.getConditionManager().checkConditions(player, "reveal_item")) {
                     return;
                 }
+
                 if (player.hasCooldown(item.getType())) {
                     player.sendMessage("§cПодождите перед использованием снова!");
                 } else {
@@ -62,14 +69,12 @@ public class RevealItemListener implements Listener {
                     Location location = player.getLocation();
                     String worldName = location.getWorld().getName();
                     if (!this.isInBannedRegion(location, location.getWorld().getName()) && !this.hasBannedRegionFlags(location, location.getWorld().getName())) {
-
                         int durationSeconds = this.plugin.getRevealItemGlowDuration();
-
                         int radius = this.plugin.getRevealItemRadius();
                         Location playerLocation = player.getLocation();
                         boolean foundOpponent = false;
 
-                        for (Player nearbyPlayer : playerLocation.getWorld().getPlayers()) {
+                        for(Player nearbyPlayer : playerLocation.getWorld().getPlayers()) {
                             if (!nearbyPlayer.equals(player) && nearbyPlayer.getLocation().distance(playerLocation) <= (double)radius) {
                                 foundOpponent = true;
                                 if (this.combatLogXHandler.isCombatLogXEnabled()) {
@@ -90,18 +95,14 @@ public class RevealItemListener implements Listener {
                                     nearbyPlayer.removePotionEffect(PotionEffectType.INVISIBILITY);
                                 }
 
-                                nearbyPlayer.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, durationSeconds * 20, 0));
-                                if (wasInvisible) {
+                                nearbyPlayer.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, durationSeconds * 20, 0));if (wasInvisible) {
                                     int finalRemainingInvisibilityTime = remainingInvisibilityTime - durationSeconds * 20;
 
                                     new BukkitRunnable() {
                                         @Override
                                         public void run() {
-
                                             if (nearbyPlayer != null && nearbyPlayer.isOnline() && !nearbyPlayer.isDead()) {
-
                                                 if (finalRemainingInvisibilityTime > 0) {
-
                                                     nearbyPlayer.addPotionEffect(
                                                             new PotionEffect(PotionEffectType.INVISIBILITY, finalRemainingInvisibilityTime, 0, true, false)
                                                     );
@@ -110,13 +111,12 @@ public class RevealItemListener implements Listener {
                                         }
                                     }.runTaskLater(this.plugin, durationSeconds * 20L);
                                 }
-
                             }
                         }
 
                         if (this.combatLogXHandler.isCombatLogXEnabled() && foundOpponent) {
                             this.combatLogXHandler.tagPlayer(player, TagType.DAMAGE, TagReason.UNKNOWN);
-                            if(this.plugin.getConfig().getString("reveal_item.messages.pvp-enabled-by-player") != "") {
+                            if (this.plugin.getConfig().getString("reveal_item.messages.pvp-enabled-by-player") != "") {
                                 player.sendMessage(this.plugin.getConfig().getString("reveal_item.messages.pvp-enabled-by-player"));
                             }
                         }
@@ -130,13 +130,14 @@ public class RevealItemListener implements Listener {
                         float volume = this.plugin.getRevealItemSoundVolume();
                         float pitch = this.plugin.getRevealItemSoundPitch();
                         player.playSound(playerLocation, Sound.valueOf(soundType), volume, pitch);
-                        this.showParticleCircle(playerLocation, (double)radius, Particle.valueOf(VioTrap.getPlugin().getRevealItemParticleType()));
+                        this.showParticleExplosion(playerLocation, (double)radius, Particle.valueOf(VioTrap.getPlugin().getRevealItemParticleType()));
                     } else {
                         player.sendMessage("§cВы не можете использовать данный предмет в этом регионе!");
                     }
                 }
             }
         }
+
     }
 
     private boolean isInBannedRegion(Location location, String worldName) {
@@ -181,16 +182,16 @@ public class RevealItemListener implements Listener {
         }
     }
 
-    private void showParticleCircle(Location center, double radius, Particle particle) {
-        int points = 100;
-        double increment = (Math.PI * 2D) / (double)points;
+    private void showParticleExplosion(Location center, double radius, Particle particle) {
+        int particleCount = this.plugin.getConfig().getInt("reveal_item.particle_count", 8);
+        double speed = this.plugin.getConfig().getDouble("reveal_item.particle_speed", 0.2);
 
-        for(int i = 0; i < points; ++i) {
-            double angle = (double)i * increment;
-            double x = center.getX() + radius * Math.cos(angle);
-            double z = center.getZ() + radius * Math.sin(angle);
-            Location particleLocation = new Location(center.getWorld(), x, center.getY(), z);
-            center.getWorld().spawnParticle(particle, particleLocation, 1, (double)0.0F, (double)0.0F, (double)0.0F, (double)0.0F);
+        for(int i = 0; i < particleCount; ++i) {
+            double angle = (Math.PI * 2D) / (double)particleCount * (double)i;
+            double spawnOffsetX = Math.cos(angle) * 0.8;
+            double spawnOffsetZ = Math.sin(angle) * 0.8;
+            Location particleLocation = new Location(center.getWorld(), center.getX(), center.getY() + 0.1, center.getZ());
+            center.getWorld().spawnParticle(particle, particleLocation, 0, spawnOffsetX, (double)0.0F, spawnOffsetZ, speed);
         }
 
     }

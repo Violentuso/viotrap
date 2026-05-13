@@ -20,7 +20,6 @@ public class AnimationCreatorMenu implements Listener, InventoryHolder {
     private final VioTrap plugin;
     private final String menuTitle = "§8Создание анимации";
     private final Map<UUID, List<String>> playerFrames = new HashMap<>();
-    private final Map<UUID, String> playerAnimNames = new HashMap<>();
     private final Map<UUID, Integer> playerPages = new HashMap<>();
 
     public AnimationCreatorMenu(VioTrap plugin) {
@@ -29,7 +28,7 @@ public class AnimationCreatorMenu implements Listener, InventoryHolder {
 
     @Override
     public Inventory getInventory() {
-        return null; // Для идентификации через holder
+        return null;  
     }
 
     public void open(Player player) {
@@ -39,8 +38,7 @@ public class AnimationCreatorMenu implements Listener, InventoryHolder {
     public void open(Player player, int page) {
         UUID uuid = player.getUniqueId();
 
-        // Надежная инициализация (защита от NPE)
-        playerAnimNames.putIfAbsent(uuid, player.getName() + "_anim_" + (System.currentTimeMillis() / 1000));
+         
         playerFrames.putIfAbsent(uuid, new ArrayList<>());
 
         Inventory inv = Bukkit.createInventory(this, 54, menuTitle);
@@ -52,17 +50,16 @@ public class AnimationCreatorMenu implements Listener, InventoryHolder {
         UUID uuid = player.getUniqueId();
         inv.clear();
 
-        // computeIfAbsent гарантирует, что currentFrames НИКОГДА не будет null
+         
         List<String> currentFrames = playerFrames.computeIfAbsent(uuid, k -> new ArrayList<>());
-        String animName = playerAnimNames.computeIfAbsent(uuid, k -> player.getName() + "_anim_" + (System.currentTimeMillis() / 1000));
 
-        // Отрисовка предмета информации (Таймлайн)
+         
         ItemStack infoItem = new ItemStack(Material.PAPER);
         ItemMeta infoMeta = infoItem.getItemMeta();
         if (infoMeta != null) {
             infoMeta.setDisplayName("§eТаймлайн (" + currentFrames.size() + " кадров)");
             List<String> lore = new ArrayList<>();
-            lore.add("§7Имя: §f" + animName);
+            lore.add("§7Имя: §fБудет указано при сохранении");  
             lore.add("§7Кадры по порядку:");
             if (currentFrames.isEmpty()) {
                 lore.add("§cПусто. Выберите шаблоны ниже.");
@@ -77,24 +74,24 @@ public class AnimationCreatorMenu implements Listener, InventoryHolder {
         }
         inv.setItem(0, infoItem);
 
-        // Системные кнопки
+         
         inv.setItem(4, createItem(Material.RED_DYE, "§cОчистить кадры"));
-        inv.setItem(8, createItem(Material.LIME_DYE, "§aСохранить анимацию"));
+        inv.setItem(8, createItem(Material.LIME_DYE, "§aСохранить анимацию", "§7Нажмите, чтобы задать", "§7название и сохранить."));
 
-        // Декоративное стекло
+         
         for (int i = 9; i < 18; i++) {
             inv.setItem(i, createItem(Material.GRAY_STAINED_GLASS_PANE, " "));
         }
 
-        // Собираем список всех шаблонов
+         
         List<String> allPatterns = new ArrayList<>();
         ConfigurationSection section = plugin.getConfig().getConfigurationSection("custom_patterns");
         if (section != null) {
             allPatterns.addAll(section.getKeys(false));
         }
 
-        // Математика страниц
-        int itemsPerPage = 27; // Слоты 18-44
+         
+        int itemsPerPage = 27;  
         int totalPages = (int) Math.ceil((double) allPatterns.size() / itemsPerPage);
         if (totalPages == 0) totalPages = 1;
 
@@ -102,14 +99,14 @@ public class AnimationCreatorMenu implements Listener, InventoryHolder {
         if (page >= totalPages) page = totalPages - 1;
         playerPages.put(uuid, page);
 
-        // Отрисовка шаблонов на текущей странице
+         
         int startIndex = page * itemsPerPage;
         int slot = 18;
         for (int i = startIndex; i < Math.min(startIndex + itemsPerPage, allPatterns.size()); i++) {
             inv.setItem(slot++, createItem(Material.BLAZE_POWDER, "§e" + allPatterns.get(i), "§7Нажмите, чтобы добавить кадр"));
         }
 
-        // Кнопки навигации
+         
         if (page > 0) inv.setItem(45, createItem(Material.ARROW, "§a◀ Предыдущая страница"));
         if (page < totalPages - 1) inv.setItem(53, createItem(Material.ARROW, "§aСледующая страница ▶"));
     }
@@ -126,13 +123,12 @@ public class AnimationCreatorMenu implements Listener, InventoryHolder {
 
         if (clicked == null || clicked.getType() == Material.AIR) return;
 
-        // Восстанавливаем сессию на лету, если её вымыло из памяти
+         
         playerFrames.putIfAbsent(uuid, new ArrayList<>());
-        playerAnimNames.putIfAbsent(uuid, player.getName() + "_anim_" + (System.currentTimeMillis() / 1000));
 
         int currentPage = playerPages.getOrDefault(uuid, 0);
 
-        // Обработка стрелочек пагинации
+         
         if (clicked.getType() == Material.ARROW && clicked.hasItemMeta()) {
             if (clicked.getItemMeta().getDisplayName().contains("◀")) {
                 updateInventory(player, event.getInventory(), currentPage - 1);
@@ -143,7 +139,7 @@ public class AnimationCreatorMenu implements Listener, InventoryHolder {
             return;
         }
 
-        // Обработка кнопок
+         
         if (clicked.getType() == Material.RED_DYE) {
             playerFrames.get(uuid).clear();
             updateInventory(player, event.getInventory(), currentPage);
@@ -151,25 +147,39 @@ public class AnimationCreatorMenu implements Listener, InventoryHolder {
 
         } else if (clicked.getType() == Material.LIME_DYE) {
             List<String> frames = playerFrames.get(uuid);
-            if (frames.isEmpty()) {
+            if (frames == null || frames.isEmpty()) {
                 player.sendMessage("§cВы не добавили ни одного кадра!");
                 return;
             }
 
-            String animName = playerAnimNames.get(uuid);
-            plugin.getConfig().set("custom_animations." + animName, frames);
-            plugin.saveConfig();
-
-            // Обновляем кэш
-            if (plugin.getParticleCacheManager() != null) {
-                plugin.getParticleCacheManager().reloadCache();
-            }
-
-            player.sendMessage("§aАнимация '" + animName + "' сохранена!");
             player.closeInventory();
+            player.sendMessage("§e[VioTrap] §aВведите название для новой анимации (без пробелов):");
 
-            playerFrames.remove(uuid);
-            playerAnimNames.remove(uuid);
+             
+            plugin.getChatInputHandler().waitForInput(player, (input) -> {
+                String safeName = input.replace(" ", "_").replaceAll("[^a-zA-Z0-9_\\-]", "");
+
+                if (safeName.isEmpty()) {
+                    player.sendMessage("§cНекорректное название! Сохранение отменено.");
+                    return;
+                }
+
+                 
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    plugin.getConfig().set("custom_animations." + safeName, frames);
+                    plugin.saveConfig();
+
+                     
+                    if (plugin.getParticleCacheManager() != null) {
+                        plugin.getParticleCacheManager().reloadCache();
+                    }
+
+                    player.sendMessage("§aАнимация '" + safeName + "' успешно сохранена!");
+                    player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
+
+                    playerFrames.remove(uuid);
+                });
+            });
 
         } else if (clicked.getType() == Material.BLAZE_POWDER) {
             String patternName = org.bukkit.ChatColor.stripColor(clicked.getItemMeta().getDisplayName());

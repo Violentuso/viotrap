@@ -15,14 +15,21 @@ public class PlateItem {
 
     public static ItemStack getPlateItem(int amount, String skin) {
         if (amount <= 0) return new ItemStack(Material.AIR);
-        ItemStack item = new ItemStack(Material.valueOf(VioTrap.getPlugin().getPlateType()), amount);
+        String appliedSkin = skin == null || skin.isEmpty() ? "default" : skin;
+        String materialName = VioTrap.getPlugin().getPlateType();
+        Material material = materialName == null ? null : Material.getMaterial(materialName.toUpperCase());
+        if (material == null) {
+            material = Material.DRIED_KELP;
+        }
+        ItemStack item = new ItemStack(material, amount);
         ItemMeta meta = item.getItemMeta();
 
         if (meta != null) {
-            meta.setDisplayName(VioTrap.getPlugin().getPlateDisplayName());
-            List<String> lore = VioTrap.getPlugin().getPlateDescription();
+            meta.setDisplayName(VioTrap.getPlugin().getPlateSkinDisplayName(appliedSkin));
+            List<String> lore = VioTrap.getPlugin().getPlateSkinDescription(appliedSkin);
             meta.setLore(lore);
-            meta.getPersistentDataContainer().set(PLATE_ITEM_KEY, PersistentDataType.STRING, "static_plate_item_id");
+            meta.getPersistentDataContainer().set(PLATE_ITEM_KEY, PersistentDataType.STRING, STATIC_ITEM_ID);
+            meta.getPersistentDataContainer().set(SKIN_KEY, PersistentDataType.STRING, appliedSkin);
 
 
             item.setItemMeta(meta);

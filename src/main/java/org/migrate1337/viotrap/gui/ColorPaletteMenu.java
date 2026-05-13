@@ -38,7 +38,7 @@ public class ColorPaletteMenu implements Listener, InventoryHolder {
             customColor.setItemMeta(customMeta);
         }
         inv.setItem(25, customColor);
-        // Расставляем базовые цвета
+         
         addColor(inv, 10, Material.RED_DYE, "§cКрасный", "255,0,0");
         addColor(inv, 11, Material.ORANGE_DYE, "§6Оранжевый", "255,165,0");
         addColor(inv, 12, Material.YELLOW_DYE, "§eЖелтый", "255,255,0");
@@ -51,7 +51,7 @@ public class ColorPaletteMenu implements Listener, InventoryHolder {
         addColor(inv, 22, Material.WHITE_DYE, "§fБелый", "255,255,255");
         addColor(inv, 23, Material.INK_SAC, "§8Черный", "0,0,0");
 
-        // Кнопка возврата (можно сделать переход обратно в меню эффектов)
+         
         ItemStack back = new ItemStack(Material.ARROW);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
@@ -68,7 +68,7 @@ public class ColorPaletteMenu implements Listener, InventoryHolder {
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(name);
-            // Прячем RGB код в лор (невидимым или серым текстом), чтобы потом легко его достать при клике
+             
             meta.setLore(Arrays.asList("§7Нажмите, чтобы выбрать", "§8RGB: " + rgb));
             item.setItemMeta(meta);
         }
@@ -87,19 +87,19 @@ public class ColorPaletteMenu implements Listener, InventoryHolder {
         if (clicked == null || clicked.getType() == Material.AIR) return;
         if (clicked.getType() == Material.NAME_TAG && clicked.hasItemMeta() && clicked.getItemMeta().getDisplayName().equals("§dСвой цвет")) {
             player.closeInventory();
-            waitingForColor.add(player.getUniqueId()); // Помещаем игрока в режим ожидания
+            waitingForColor.add(player.getUniqueId());  
             player.sendMessage("§eВведите цвет в чат (например: §f255,100,50 §eили §f#FF5533§e):");
             player.sendMessage("§7Напишите 'отмена' для выхода.");
             return;
         }
         if (clicked.getType() == Material.ARROW) {
-            // Возвращаем в меню выбора эффектов
+             
             new PatternSelectMenu(plugin).open(player);
             return;
         }
 
         if (clicked.hasItemMeta() && clicked.getItemMeta().getLore() != null) {
-            // Достаем наш RGB код из второй строчки лора "§8RGB: 255,0,0"
+             
             String loreLine = clicked.getItemMeta().getLore().get(1);
             String rgbStr = loreLine.replace("§8RGB: ", "");
 
@@ -107,7 +107,7 @@ public class ColorPaletteMenu implements Listener, InventoryHolder {
                 plugin.getParticleEditorManager().getSession(player).setCurrentBrushColor(rgbStr);
                 player.sendMessage("§aВы обмакнули кисть в новый цвет! §7(RGB: " + rgbStr + ")");
             } else {
-                // На всякий случай оставляем логику для конфига, если вдруг он открыл не из редактора
+                 
                 plugin.getConfig().set("active_player_colors." + player.getUniqueId().toString(), rgbStr);
                 plugin.saveConfig();
                 player.sendMessage("§aВы успешно изменили цвет эффекта!");

@@ -7,7 +7,7 @@ import org.bukkit.inventory.ItemStack;
 
 public class TrapBlockData {
     private final Material material;
-    private final BlockData blockData; // Это Bukkit BlockData
+    private final BlockData blockData;  
     private ItemStack[] contents;
     private String spawnedType;
     private boolean isDoubleChest;

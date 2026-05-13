@@ -87,6 +87,10 @@ public class SkinCreationMenu implements Listener {
                 ColorUtil.format("&#FF9800Время действия"),
                 ColorUtil.format("&#AEC1F2 • Текущий: ") + plugin.getTempSkinData().getOrDefault("duration", "Не задано")));
 
+        inv.setItem(32, createMenuItem(Material.FIREWORK_STAR,
+                ColorUtil.format("&#FF69B4Анимация / Партиклы"),
+                ColorUtil.format("&#AEC1F2 • Текущая: ") + plugin.getTempSkinData().getOrDefault("animation", "Не задано")));
+
         inv.setItem(31, createMenuItem(Material.COMMAND_BLOCK,
                 ColorUtil.format("&#ADD8E6Действия"),
                 ColorUtil.format("&#AEC1F2 • Настроить действия (" + getActionsCount() + ")")));
@@ -174,14 +178,25 @@ public class SkinCreationMenu implements Listener {
             if (parts.length > 1) {
                 String[] args = parts[1].split(";");
                 String targetDisplay = args[0];
-
-                if (targetDisplay.equalsIgnoreCase("not-in") && args.length > 1) {
-                    targetDisplay += " (r=" + args[1] + ")";
-                }
+                String targetRadius = args.length > 1 ? args[1] : "5.0";
 
                 StringBuilder sb = new StringBuilder(targetDisplay);
-                for (int i = 2; i < args.length; i++) {
-                    sb.append(" ").append(args[i]);
+
+                 
+                if (targetDisplay.equalsIgnoreCase("not-in")) {
+                    sb.append(" (r=").append(targetRadius).append(")");
+                }
+
+                 
+                if (type.equals("blockspread")) {
+                    sb.append(" [Радиус блоков: ").append(args[2]).append("]");
+                    for (int i = 3; i < args.length; i++) {
+                        sb.append(" ").append(args[i]);
+                    }
+                } else {
+                    for (int i = 2; i < args.length; i++) {
+                        sb.append(" ").append(args[i]);
+                    }
                 }
                 displayArgs = sb.toString();
             }
@@ -254,8 +269,8 @@ public class SkinCreationMenu implements Listener {
                 ColorUtil.format("&#AEC1F2 • Перемешать хотбар игроку")));
 
         inv.setItem(8, createMenuItem(Material.COBWEB,
-                ColorUtil.format("&#EAD7A2Заражение блоков"),
-                ColorUtil.format("&#AEC1F2 • Заменить блоки вокруг на другие")));
+                ColorUtil.format("&#EAD7A2Спавн блоков"),
+                ColorUtil.format("&#AEC1F2 • Спавнит блоки в радиусе")));
 
         inv.setItem(17, createMenuItem(Material.BARRIER,
                 ColorUtil.format("&#EB2D3AНазад"),
@@ -313,6 +328,7 @@ public class SkinCreationMenu implements Listener {
                             case 23: this.openFlagsMenu(player); break;
                             case 24: this.handleInput(player, "cooldown", "Введите кулдаун в секундах (целое число):"); break;
                             case 25: this.handleInput(player, "duration", "Введите время действия в секундах (целое число):"); break;
+                            case 32: this.handleInput(player, "animation", "Введите название анимации или паттерна:"); break;
                             case 40: this.saveSkin(player); break;
                         }
                     } else if (event.getView().getTitle().equals("Действия скина")) {
@@ -454,152 +470,122 @@ public class SkinCreationMenu implements Listener {
                 }
 
                 String target = tokens[0];
-                double radius = 5.0;
+                double targetRadius = 5.0;  
                 int offset = 1;
 
+                 
                 if (target.equalsIgnoreCase("not-in")) {
                     if (tokens.length < 2) {
-                        player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AДля таргета not-in необходимо указать радиус!"));
+                        player.sendMessage("§cДля таргета not-in необходимо указать радиус!");
                         Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
                         return;
                     }
                     try {
-                        radius = Double.parseDouble(tokens[1]);
-                        offset = 2;
+                        targetRadius = Double.parseDouble(tokens[1]);
+                        offset = 2;  
                     } catch (NumberFormatException e) {
-                        player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AРадиус должен быть числом!"));
+                        player.sendMessage("§cРадиус для not-in должен быть числом!");
                         Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
                         return;
                     }
                 }
 
-                switch (actionType) {
-                    case "effect":
-                        if (tokens.length - offset != 3) {
-                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <эффект> <сила> <время>");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        try {
+                try {
+                    switch (actionType) {
+                        case "effect":
+                            if (tokens.length - offset != 3) {
+                                player.sendMessage("§cНеверно! Формат: <таргет> [радиус_not_in] <эффект> <сила> <время>");
+                                Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player)); return;
+                            }
                             Integer.parseInt(tokens[offset + 1]);
                             Integer.parseInt(tokens[offset + 2]);
-                        } catch (Exception e) {
-                            player.sendMessage("§cСила и время должны быть числами!");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        actions.put(actionKey, "effect;" + target + ";" + radius + ";" + tokens[offset] + ";" + tokens[offset+1] + ";" + tokens[offset+2]);
-                        break;
+                            actions.put(actionKey, "effect;" + target + ";" + targetRadius + ";" + tokens[offset] + ";" + tokens[offset+1] + ";" + tokens[offset+2]);
+                            break;
 
-                    case "command":
-                        if (tokens.length - offset < 1) {
-                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <команда>");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        String cmd = String.join(" ", Arrays.copyOfRange(tokens, offset, tokens.length));
-                        actions.put(actionKey, "command;" + target + ";" + radius + ";" + cmd);
-                        break;
+                        case "command":
+                            if (tokens.length - offset < 1) {
+                                player.sendMessage("§cНеверно! Формат: <таргет> [радиус_not_in] <команда>");
+                                Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player)); return;
+                            }
+                            String cmd = String.join(" ", Arrays.copyOfRange(tokens, offset, tokens.length));
+                            actions.put(actionKey, "command;" + target + ";" + targetRadius + ";" + cmd);
+                            break;
 
-                    case "teleportout":
-                        if (tokens.length - offset != 2 || !tokens[offset+1].equalsIgnoreCase("up")) {
-                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <блоки> up");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        try { Integer.parseInt(tokens[offset]); } catch (Exception e) {
-                            player.sendMessage("§cКоличество блоков должно быть числом!");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        actions.put(actionKey, "teleportout;" + target + ";" + radius + ";" + tokens[offset]);
-                        break;
+                        case "teleportout":
+                            if (tokens.length - offset != 2 || !tokens[offset+1].equalsIgnoreCase("up")) {
+                                player.sendMessage("§cНеверно! Формат: <таргет> [радиус_not_in] <блоки> up");
+                                Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player)); return;
+                            }
+                            Integer.parseInt(tokens[offset]);
+                            actions.put(actionKey, "teleportout;" + target + ";" + targetRadius + ";" + tokens[offset]);
+                            break;
 
-                    case "particlehitbox":
-                        if (tokens.length - offset != 2) {
-                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <частица> <время>");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        try { Integer.parseInt(tokens[offset+1]); } catch (Exception e) {
-                            player.sendMessage("§cВремя должно быть числом!");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        actions.put(actionKey, "particlehitbox;" + target + ";" + radius + ";" + tokens[offset] + ";" + tokens[offset+1]);
-                        break;
+                        case "particlehitbox":
+                            if (tokens.length - offset != 2) {
+                                player.sendMessage("§cНеверно! Формат: <таргет> [радиус_not_in] <частица> <время>");
+                                Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player)); return;
+                            }
+                            Integer.parseInt(tokens[offset+1]);
+                            actions.put(actionKey, "particlehitbox;" + target + ";" + targetRadius + ";" + tokens[offset] + ";" + tokens[offset+1]);
+                            break;
 
-                    case "cooldownitem":
-                        if (tokens.length - offset != 2) {
-                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <предметы> <сек>");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        try { Integer.parseInt(tokens[offset+1]); } catch (Exception e) {
-                            player.sendMessage("§cВремя должно быть числом!");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        actions.put(actionKey, "cooldownitem;" + target + ";" + radius + ";" + tokens[offset] + ";" + tokens[offset+1]);
-                        break;
+                        case "cooldownitem":
+                            if (tokens.length - offset != 2) {
+                                player.sendMessage("§cНеверно! Формат: <таргет> [радиус_not_in] <предметы> <сек>");
+                                Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player)); return;
+                            }
+                            Integer.parseInt(tokens[offset+1]);
+                            actions.put(actionKey, "cooldownitem;" + target + ";" + targetRadius + ";" + tokens[offset] + ";" + tokens[offset+1]);
+                            break;
 
-                    case "denyitemuse":
-                        if (tokens.length - offset != 1) {
-                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <предметы>");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        actions.put(actionKey, "denyitemuse;" + target + ";" + radius + ";" + tokens[offset]);
-                        break;
+                        case "denyitemuse":
+                            if (tokens.length - offset != 1) {
+                                player.sendMessage("§cНеверно! Формат: <таргет> [радиус_not_in] <предметы>");
+                                Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player)); return;
+                            }
+                            actions.put(actionKey, "denyitemuse;" + target + ";" + targetRadius + ";" + tokens[offset]);
+                            break;
 
-                    case "launch":
-                        if (tokens.length - offset != 2) {
-                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <сила_вверх> <сила_в_стороны>");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        try {
+                        case "launch":
+                            if (tokens.length - offset != 2) {
+                                player.sendMessage("§cНеверно! Формат: <таргет> [радиус_not_in] <сила_вверх> <сила_в_стороны>");
+                                Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player)); return;
+                            }
                             Double.parseDouble(tokens[offset]);
                             Double.parseDouble(tokens[offset+1]);
-                        } catch (Exception e) {
-                            player.sendMessage("§cСила должна быть числом!");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        actions.put(actionKey, "launch;" + target + ";" + radius + ";" + tokens[offset] + ";" + tokens[offset+1]);
-                        break;
+                            actions.put(actionKey, "launch;" + target + ";" + targetRadius + ";" + tokens[offset] + ";" + tokens[offset+1]);
+                            break;
 
-                    case "scrambleinventory":
-                        if (tokens.length - offset != 0) {
-                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус]");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        actions.put(actionKey, "scrambleinventory;" + target + ";" + radius);
-                        break;
+                        case "scrambleinventory":
+                            if (tokens.length - offset != 0) {
+                                player.sendMessage("§cНеверно! Формат: <таргет> [радиус_not_in]");
+                                Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player)); return;
+                            }
+                            actions.put(actionKey, "scrambleinventory;" + target + ";" + targetRadius);
+                            break;
 
-                    case "blockspread":
-                        if (tokens.length - offset != 3) {
-                            player.sendMessage("§cНеверно! Формат: <таргет> [радиус] <материал> <шанс(%)> <возврат_сек>");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        Material mat = Material.matchMaterial(tokens[offset].toUpperCase());
-                        if (mat == null) {
-                            player.sendMessage("§cУказанный материал " + tokens[offset] + " не найден!");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        try {
-                            Double.parseDouble(tokens[offset+1]);
-                            Integer.parseInt(tokens[offset+2]);
-                        } catch (Exception e) {
-                            player.sendMessage("§cШанс должен быть числом (например 30.5), а секунды - целым числом!");
-                            Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
-                            return;
-                        }
-                        actions.put(actionKey, "blockspread;" + target + ";" + radius + ";" + tokens[offset].toUpperCase() + ";" + tokens[offset+1] + ";" + tokens[offset+2]);
-                        break;
+                        case "blockspread":
+                             
+                            if (tokens.length - offset != 4) {
+                                player.sendMessage("§cНеверно! Формат: <таргет> [радиус_not_in] <радиус_блоков> <материал> <шанс(%)> <возврат_сек>");
+                                Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player)); return;
+                            }
+                            double actionRadius = Double.parseDouble(tokens[offset]);
+                            Material mat = Material.matchMaterial(tokens[offset+1].toUpperCase());
+                            if (mat == null) {
+                                player.sendMessage("§cУказанный материал " + tokens[offset+1] + " не найден!");
+                                Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player)); return;
+                            }
+                            double chance = Double.parseDouble(tokens[offset+2]);
+                            int revert = Integer.parseInt(tokens[offset+3]);
+
+                            actions.put(actionKey, "blockspread;" + target + ";" + targetRadius + ";" + actionRadius + ";" + tokens[offset+1].toUpperCase() + ";" + chance + ";" + revert);
+                            break;
+                    }
+                } catch (Exception e) {
+                    player.sendMessage("§cОшибка: Проверьте правильность введенных чисел!");
+                    Bukkit.getScheduler().runTask(this.plugin, () -> this.openActionsMenu(player));
+                    return;
                 }
 
                 this.plugin.getTempSkinData().put("actions", this.serializeActions(actions));
@@ -804,6 +790,9 @@ public class SkinCreationMenu implements Listener {
         Object cooldownObj = this.plugin.getTempSkinData().get("cooldown");
         String cooldown = cooldownObj != null ? cooldownObj.toString() : null;
 
+        Object animObj = this.plugin.getTempSkinData().get("animation");
+        String animation = animObj != null ? animObj.toString() : null;
+
         Object durationObj = this.plugin.getTempSkinData().get("duration");
         String duration = durationObj != null ? durationObj.toString() : null;
 
@@ -815,7 +804,11 @@ public class SkinCreationMenu implements Listener {
             for (String line : descriptionLines) {
                 coloredDesc.add(ChatColor.translateAlternateColorCodes('&', line));
             }
-
+            if (animation != null && !animation.equals("Не задано") && !animation.isEmpty()) {
+                this.plugin.getConfig().set("skins." + skinName + ".animation", animation);
+            } else {
+                this.plugin.getConfig().set("skins." + skinName + ".animation", null);
+            }
             this.plugin.getConfig().set("skins." + skinName + ".schem", schematic);
             this.plugin.getConfig().set("skins." + skinName + ".sound.type", sound);
             this.plugin.getConfig().set("skins." + skinName + ".sound.volume", 1.0F);
@@ -896,10 +889,11 @@ public class SkinCreationMenu implements Listener {
                             break;
                         case "blockspread":
                             this.plugin.getConfig().set(basePath + ".target", target);
-                            this.plugin.getConfig().set(basePath + ".radius", radius);
-                            this.plugin.getConfig().set(basePath + ".material", parts[3]);
-                            this.plugin.getConfig().set(basePath + ".chance", Double.parseDouble(parts[4]));
-                            this.plugin.getConfig().set(basePath + ".revert-time", Integer.parseInt(parts[5]));
+                            this.plugin.getConfig().set(basePath + ".radius", radius);  
+                            this.plugin.getConfig().set(basePath + ".action-radius", Double.parseDouble(parts[3]));  
+                            this.plugin.getConfig().set(basePath + ".material", parts[4]);
+                            this.plugin.getConfig().set(basePath + ".chance", Double.parseDouble(parts[5]));
+                            this.plugin.getConfig().set(basePath + ".revert-time", Integer.parseInt(parts[6]));
                             break;
                     }
                 }

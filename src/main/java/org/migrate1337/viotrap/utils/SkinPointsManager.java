@@ -26,6 +26,7 @@ public class SkinPointsManager {
             try {
                 this.pointsFile.createNewFile();
             } catch (IOException e) {
+                plugin.getLogger().warning("Не удалось создать skin_points.yml: " + e.getMessage());
             }
         }
 
@@ -35,19 +36,35 @@ public class SkinPointsManager {
 
     private void loadPointsToCache() {
         for(String uuid : this.pointsConfig.getKeys(false)) {
-            Map<String, Integer> skinPoints = new HashMap();
+            if (!this.pointsConfig.isConfigurationSection(uuid)) {
+                continue;
+            }
 
-            for(String skin : this.pointsConfig.getConfigurationSection(uuid).getKeys(false)) {
+            UUID playerId;
+            try {
+                playerId = UUID.fromString(uuid);
+            } catch (IllegalArgumentException e) {
+                plugin.getLogger().warning("Пропущен некорректный UUID в skin_points.yml: " + uuid);
+                continue;
+            }
+
+            Map<String, Integer> skinPoints = new HashMap();
+            org.bukkit.configuration.ConfigurationSection playerSection = this.pointsConfig.getConfigurationSection(uuid);
+
+            for(String skin : playerSection.getKeys(false)) {
                 int points = this.pointsConfig.getInt(uuid + "." + skin);
                 skinPoints.put(skin, points);
             }
 
-            this.pointsCache.put(UUID.fromString(uuid), skinPoints);
+            this.pointsCache.put(playerId, skinPoints);
         }
 
     }
 
     public void addPoints(UUID playerUUID, String skin, int amount) {
+        if (amount <= 0) {
+            return;
+        }
         Map<String, Integer> skinPoints = (Map)this.pointsCache.computeIfAbsent(playerUUID, (k) -> new HashMap());
         int newPoints = (Integer)skinPoints.getOrDefault(skin, 0) + amount;
         skinPoints.put(skin, newPoints);
@@ -56,6 +73,9 @@ public class SkinPointsManager {
     }
 
     public void removePoints(UUID playerUUID, String skin, int amount) {
+        if (amount <= 0) {
+            return;
+        }
         Map<String, Integer> skinPoints = (Map)this.pointsCache.computeIfAbsent(playerUUID, (k) -> new HashMap());
         int currentPoints = (Integer)skinPoints.getOrDefault(skin, 0);
         if (currentPoints < amount) {
@@ -81,6 +101,7 @@ public class SkinPointsManager {
         try {
             this.pointsConfig.save(this.pointsFile);
         } catch (IOException e) {
+            plugin.getLogger().warning("Не удалось сохранить skin_points.yml: " + e.getMessage());
         }
 
     }

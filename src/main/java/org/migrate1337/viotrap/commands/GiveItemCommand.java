@@ -24,7 +24,7 @@ public class GiveItemCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("viotrap.give")) { // Лучше использовать конкретное право, а не *
+        if (!sender.hasPermission("viotrap.give")) {  
             sender.sendMessage(PREFIX + "§cУ вас недостаточно прав.");
             return true;
         }

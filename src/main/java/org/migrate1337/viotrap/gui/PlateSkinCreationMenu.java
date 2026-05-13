@@ -137,11 +137,11 @@ public class PlateSkinCreationMenu implements Listener {
         if (title.equals("Создание скина для пласта") && sub.isEmpty()) {
             int slot = event.getSlot();
             if (slot == 19) handleInput(player, "name", "Введите название скина:");
-            else if (slot == 21) Bukkit.getScheduler().runTask(plugin, () -> openSchematicsMenu(player));
+            else if (slot == 20) Bukkit.getScheduler().runTask(plugin, () -> openSchematicsMenu(player));
+            else if (slot == 21) handleInput(player, "duration", "Введите длительность в секундах:");
             else if (slot == 23) handleInput(player, "sound.type", "Введите тип звука активации:");
-            else if (slot == 24) handleInput(player, "sound.type-ended", "Введите тип звука завершения:"); // Новый слот
+            else if (slot == 24) handleInput(player, "sound.type-ended", "Введите тип звука завершения:");  
             else if (slot == 25) handleInput(player, "cooldown", "Введите кулдаун в секундах:");
-            else if (slot == 29) handleInput(player, "duration", "Введите длительность в секундах:");
             else if (slot == 31) saveSkin(player);
         }
 
@@ -211,8 +211,13 @@ public class PlateSkinCreationMenu implements Listener {
         plugin.getConfig().set("plate_skins." + name + ".sound.volume-ended", 1.0F);
         plugin.getConfig().set("plate_skins." + name + ".sound.pitch-ended", 1.0F);
 
-        plugin.getConfig().set("plate_skins." + name + ".cooldown", Integer.parseInt(data.get("cooldown")));
-        plugin.getConfig().set("plate_skins." + name + ".duration", Integer.parseInt(data.get("duration")));
+        try {
+            plugin.getConfig().set("plate_skins." + name + ".cooldown", Integer.parseInt(data.get("cooldown")));
+            plugin.getConfig().set("plate_skins." + name + ".duration", Integer.parseInt(data.get("duration")));
+        } catch (NumberFormatException e) {
+            player.sendMessage(ColorUtil.format("&#90EE90[&#89E989V&#83E583T&#7CE07C] &#EB2D3AКулдаун и длительность должны быть числами!"));
+            return;
+        }
 
         plugin.saveConfig();
         plugin.getTempPlateSkinData().clear();

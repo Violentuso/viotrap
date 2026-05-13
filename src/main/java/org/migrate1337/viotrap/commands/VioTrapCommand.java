@@ -1,6 +1,5 @@
 package org.migrate1337.viotrap.commands;
 
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -52,26 +51,44 @@ public class VioTrapCommand implements CommandExecutor, TabCompleter {
             sendHelp(sender);
             return true;
         }
-        if (!sender.hasPermission("viotrap.op")){
-            return false;
-        }
         String subCommand = args[0].toLowerCase();
 
         if (subCommand.equals("give")) {
             return giveItemCommand.onCommand(sender, command, label, args);
         }
-        Player player = (Player)sender;
 
+        if (!sender.hasPermission("viotrap.op")){
+            sender.sendMessage("§cУ вас нет прав на эту команду.");
+            return true;
+        }
+
+        Player player = sender instanceof Player ? (Player)sender : null;
         String[] subArgs = Arrays.copyOfRange(args, 1, args.length);
-        if (args[0].equalsIgnoreCase("editor") && player.hasPermission("viotrap.editor")) {
+        if (args[0].equalsIgnoreCase("editor")) {
+            if (player == null) {
+                sender.sendMessage("§cЭту команду может использовать только игрок.");
+                return true;
+            }
+            if (!player.hasPermission("viotrap.editor")) {
+                sender.sendMessage("§cУ вас нет прав на редактор.");
+                return true;
+            }
             new ParticleEditorMenu(plugin).open(player);
             return true;
         }
         if (args[0].equalsIgnoreCase("animator")) {
+            if (player == null) {
+                sender.sendMessage("§cЭту команду может использовать только игрок.");
+                return true;
+            }
             new AnimationCreatorMenu(plugin).open(player);
             return true;
         }
         if (args[0].equalsIgnoreCase("effects")) {
+            if (player == null) {
+                sender.sendMessage("§cЭту команду может использовать только игрок.");
+                return true;
+            }
             new PatternSelectMenu(plugin).open(player);
             return true;
         }
@@ -95,9 +112,20 @@ public class VioTrapCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("§aКонфиг перезагружен! Все изменения применены.");
                 return true;
             case "conditions":
-                plugin.getConditionEditorMenu().openMainMenu((Player) sender);
+                if (player == null) {
+                    sender.sendMessage("§cЭту команду может использовать только игрок.");
+                    return true;
+                }
+                plugin.getConditionEditorMenu().openMainMenu(player);
                 return true;
-
+            case "skins":
+            case "configskin":
+                if (player == null) {
+                    sender.sendMessage("§cЭту команду может использовать только игрок.");
+                    return true;
+                }
+                plugin.getSkinConfigMenu().openMainMenu(player);
+                return true;
             default:
                 sender.sendMessage("§cНеизвестная подкоманда. Используйте /viotrap info для помощи.");
                 return true;
@@ -117,6 +145,7 @@ public class VioTrapCommand implements CommandExecutor, TabCompleter {
         sendHelpLine(sender, "effects", "Выбрать эффект ловушки");
         sendHelpLine(sender, "createskin", "Открыть меню создания скина ловушки");
         sendHelpLine(sender, "createplateskin", "Открыть меню создания скина пласта");
+        sendHelpLine(sender, "skins", "Настроить существующие скины");
         sendHelpLine(sender, "applyskin <player> <skin>", "Применить скин ловушки игроку");
         sendHelpLine(sender, "applyplateskin <player> <skin>", "Применить скин пласта игроку");
         sendHelpLine(sender, "conditions", "Настройка условий");
@@ -153,8 +182,17 @@ public class VioTrapCommand implements CommandExecutor, TabCompleter {
                 return skinPointsCommand.onTabComplete(sender, command, alias, subArgs);
 
             case "applyskin":
+                if (args.length == 2) return null;
+                if (args.length == 3) return StringUtil.copyPartialMatches(args[2], plugin.getSkinNames(), new ArrayList<>());
+                break;
             case "applyplateskin":
                 if (args.length == 2) return null;
+                if (args.length == 3) {
+                    List<String> skins = new ArrayList<>();
+                    skins.add("default");
+                    skins.addAll(plugin.getPlateSkinNames());
+                    return StringUtil.copyPartialMatches(args[2], skins, new ArrayList<>());
+                }
                 break;
 
         }

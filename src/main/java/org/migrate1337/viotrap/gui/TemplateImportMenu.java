@@ -38,7 +38,7 @@ public class TemplateImportMenu implements Listener, InventoryHolder {
     public void open(Player player, int page) {
         Inventory inv = Bukkit.createInventory(this, 54, menuTitle);
 
-        // Информационная кнопка
+         
         ItemStack info = new ItemStack(Material.PAPER);
         ItemMeta infoMeta = info.getItemMeta();
         if (infoMeta != null) {
@@ -52,7 +52,7 @@ public class TemplateImportMenu implements Listener, InventoryHolder {
         }
         inv.setItem(4, info);
 
-        // Декоративное стекло
+         
         ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta glassMeta = glass.getItemMeta();
         if (glassMeta != null) { glassMeta.setDisplayName(" "); glass.setItemMeta(glassMeta); }
@@ -60,15 +60,15 @@ public class TemplateImportMenu implements Listener, InventoryHolder {
             inv.setItem(i, glass);
         }
 
-        // Собираем список всех шаблонов
+         
         List<String> allPatterns = new ArrayList<>();
         ConfigurationSection section = plugin.getConfig().getConfigurationSection("custom_patterns");
         if (section != null) {
             allPatterns.addAll(section.getKeys(false));
         }
 
-        // Пагинация
-        int itemsPerPage = 27; // Слоты 18-44
+         
+        int itemsPerPage = 27;  
         int totalPages = (int) Math.ceil((double) allPatterns.size() / itemsPerPage);
         if (totalPages == 0) totalPages = 1;
 
@@ -90,7 +90,7 @@ public class TemplateImportMenu implements Listener, InventoryHolder {
             inv.setItem(slot++, patternItem);
         }
 
-        // Кнопки навигации
+         
         if (page > 0) inv.setItem(45, createNavButton("§a◀ Предыдущая страница"));
         if (page < totalPages - 1) inv.setItem(53, createNavButton("§aСледующая страница ▶"));
 
@@ -118,7 +118,7 @@ public class TemplateImportMenu implements Listener, InventoryHolder {
 
         if (clicked == null || clicked.getType() == Material.AIR) return;
 
-        // Навигация
+         
         if (clicked.getType() == Material.ARROW) {
             int currentPage = playerPages.getOrDefault(player.getUniqueId(), 0);
             if (clicked.getItemMeta().getDisplayName().contains("◀")) {

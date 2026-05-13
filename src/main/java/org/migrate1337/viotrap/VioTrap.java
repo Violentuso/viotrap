@@ -99,6 +99,8 @@ public final class VioTrap extends JavaPlugin implements Listener {
     private FileConfiguration platesConfig;
     private File cfile;
     private SkinCreationMenu skinCreationMenu;
+    private PlateSkinCreationMenu plateSkinCreationMenu;
+    private SkinConfigMenu skinConfigMenu;
     private SkinPointsManager pointsManager;
     private static final String FIREWORK_FLAG_NAME = "viotrap";
     private StateFlag fireworkUseFlag;
@@ -157,6 +159,8 @@ public final class VioTrap extends JavaPlugin implements Listener {
         this.getConfig().options().copyDefaults(true);
         this.cfile = new File(this.getDataFolder(), "config.yml");
         this.saveDefaultConfig();
+        this.chatInputHandler = new ChatInputHandler();
+        this.tempSkinData = new HashMap();
         this.activeSkinsManager = new ActiveSkinsManager(this);
         this.loadTrapsConfig();
         this.loadPlatesConfig();
@@ -202,13 +206,14 @@ public final class VioTrap extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new ColorPaletteMenu(this), this);
         getServer().getPluginManager().registerEvents(new ColorChatListener(this), this);
         getServer().getPluginManager().registerEvents(new org.migrate1337.viotrap.gui.TemplateImportMenu(this), this);
-        this.getServer().getPluginManager().registerEvents(new PlateSkinCreationMenu(this), this);
+        this.plateSkinCreationMenu = new PlateSkinCreationMenu(this);
+        this.getServer().getPluginManager().registerEvents(this.plateSkinCreationMenu, this);
+        this.skinConfigMenu = new SkinConfigMenu(this);
+        this.getServer().getPluginManager().registerEvents(this.skinConfigMenu, this);
         DenyItemUseCustomAction denyListener = new DenyItemUseCustomAction("dummy", new HashSet<>(), 0.0);
         getServer().getPluginManager().registerEvents(denyListener, this);
 
         this.loadTrapConfig();
-        this.chatInputHandler = new ChatInputHandler();
-        this.tempSkinData = new HashMap();
     }
     public org.migrate1337.viotrap.utils.ParticleCacheManager getParticleCacheManager() {
         return particleCacheManager;
@@ -228,6 +233,17 @@ public final class VioTrap extends JavaPlugin implements Listener {
     public SkinCreationMenu getSkinCreationMenu() {
         return this.skinCreationMenu;
     }
+
+    public PlateSkinCreationMenu getPlateSkinCreationMenu() {
+        return this.plateSkinCreationMenu;
+    }
+
+    public SkinConfigMenu getSkinConfigMenu() {
+        return this.skinConfigMenu;
+    }
+
+
+
 
     public void loadTrapsConfig() {
         this.trapsFile = new File(this.getDataFolder(), "traps.yml");
@@ -285,7 +301,7 @@ public final class VioTrap extends JavaPlugin implements Listener {
 
     public void loadTrapConfig() {
         this.trapDisplayName = config.getString("trap.display_name");
-        this.trapDescription = config.getStringList("trap.description");
+        this.trapDescription = getStringListOrSingle("trap.description");
         this.trapType = config.getString("trap.type");
         this.trapCooldown = config.getInt("trap.cooldown");
         this.trapDuration = config.getInt("trap.duration");
@@ -335,7 +351,7 @@ public final class VioTrap extends JavaPlugin implements Listener {
 
     public void loadPlateConfig() {
         this.plateDisplayName = config.getString("plate.display_name", "§6Пласт");
-        this.plateDescription = config.getStringList("plate.description");
+        this.plateDescription = getStringListOrSingle("plate.description");
         this.plateType = config.getString("plate.type");
         this.plateCooldown = config.getInt("plate.cooldown", 1);
         this.plateDuration = config.getInt("plate.duration", 5);
@@ -363,7 +379,7 @@ public final class VioTrap extends JavaPlugin implements Listener {
     public void loadRevealItemConfig() {
         this.revealItemType = config.getString("reveal_item.type");
         this.revealItemDisplayName = config.getString("reveal_item.display_name");
-        this.revealItemDescription = config.getStringList("reveal_item.description");
+        this.revealItemDescription = getStringListOrSingle("reveal_item.description");
         this.revealItemCooldown = config.getInt("reveal_item.cooldown");
         this.revealItemRadius = config.getInt("reveal_item.radius");
         this.revealItemSoundType = config.getString("reveal_item.sound.type", "ENTITY_EXPERIENCE_ORB_PICKUP");
@@ -608,15 +624,24 @@ public final class VioTrap extends JavaPlugin implements Listener {
     }
 
     public String getPlateSchematic(String skin, String direction) {
-        return this.getConfig().getString("plate_skins." + skin + "." + direction);
+        String base = skin == null || skin.equals("default") ? "plate" : "plate_skins." + skin;
+        return this.getConfig().getString(base + "." + direction);
     }
 
     public List<String> getPlateSkinDescription(String skin) {
-        return this.getConfig().getStringList("plate_skins." + skin + ".desc_for_plate");
+        if (skin == null || skin.equals("default")) {
+            return this.plateDescription;
+        }
+
+        List<String> description = getStringListOrSingle("plate_skins." + skin + ".desc_for_plate");
+        return description.isEmpty() ? this.plateDescription : description;
     }
 
     public String getPlateSkinDisplayName(String skin) {
-        return this.getConfig().getString("plate_skins." + skin + ".name", "§6Пласт");
+        if (skin == null || skin.equals("default")) {
+            return this.plateDisplayName;
+        }
+        return this.getConfig().getString("plate_skins." + skin + ".name", this.plateDisplayName);
     }
 
     public List<String> getPlateSkinNames() {
@@ -701,11 +726,16 @@ public final class VioTrap extends JavaPlugin implements Listener {
     }
 
     public List<String> getSkinDescription(String skinName) {
-        return skinName != null && !skinName.equals("default") ? config.getStringList("skins." + skinName + ".desc_for_trap") : this.trapDescription;
+        if (skinName == null || skinName.equals("default")) {
+            return this.trapDescription;
+        }
+
+        List<String> description = getStringListOrSingle("skins." + skinName + ".desc_for_trap");
+        return description.isEmpty() ? this.trapDescription : description;
     }
 
     public String getSkinDisplayName(String skinName) {
-        return skinName != null && !skinName.equals("default") ? config.getString("skins." + skinName + ".name") : this.trapDisplayName;
+        return skinName != null && !skinName.equals("default") ? config.getString("skins." + skinName + ".name", this.trapDisplayName) : this.trapDisplayName;
     }
 
     public List<String> getSkinNames() {
@@ -751,6 +781,19 @@ public final class VioTrap extends JavaPlugin implements Listener {
             getConfig().set(path + ".message", defaultMessage);
             getConfig().set(path + ".type", defaultType);
         }
+    }
+
+    private List<String> getStringListOrSingle(String path) {
+        if (config.isList(path)) {
+            return config.getStringList(path);
+        }
+
+        String value = config.getString(path);
+        if (value == null || value.isEmpty()) {
+            return new ArrayList();
+        }
+
+        return new ArrayList(Collections.singletonList(value));
     }
     public TrapItemListener getTrapItemListener() {
         return this.trapItemListener;

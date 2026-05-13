@@ -43,10 +43,6 @@ public class ApplySkinCommand implements CommandExecutor {
                             return true;
                         } else {
                             this.activeSkinsManager.setActiveTrapSkin(target.getUniqueId(), skinOrAll);
-                            if (requiredPoints > 0) {
-                                this.pointsManager.removePoints(target.getUniqueId(), skinOrAll, requiredPoints);
-                            }
-
                             sender.sendMessage(PREFIX + "Скин §x§5§5§F§F§5§5" + skinOrAll + " §fуспешно применен игроку §x§5§5§F§F§5§5" + target.getName());
                             return true;
                         }
@@ -58,9 +54,6 @@ public class ApplySkinCommand implements CommandExecutor {
                         if (requiredPoints <= 0 || this.pointsManager.getPoints(target.getUniqueId(), skin) >= requiredPoints) {
 
                             this.activeSkinsManager.setActiveTrapSkin(target.getUniqueId(), skin);
-                            if (requiredPoints > 0) {
-                                this.pointsManager.removePoints(target.getUniqueId(), skin, requiredPoints);
-                            }
                             ++appliedCount;
                         }
                     }

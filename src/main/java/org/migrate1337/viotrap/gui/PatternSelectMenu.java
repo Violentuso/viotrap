@@ -22,14 +22,14 @@ public class PatternSelectMenu implements Listener {
     private final VioTrap plugin;
     private final String menuTitle = "§8Эффекты ловушек";
 
-    // Память: кто на какой странице сейчас находится
+     
     private final Map<UUID, Integer> playerPages = new HashMap<>();
 
     public PatternSelectMenu(VioTrap plugin) {
         this.plugin = plugin;
     }
 
-    // Для вызова меню из других мест (открывает 1-ю страницу)
+     
     public void open(Player player) {
         open(player, 0);
     }
@@ -37,7 +37,7 @@ public class PatternSelectMenu implements Listener {
     public void open(Player player, int page) {
         Inventory inv = Bukkit.createInventory(null, 54, menuTitle);
 
-        // Кнопка Палитры цветов
+         
         ItemStack paletteItem = new ItemStack(Material.PAINTING);
         ItemMeta paletteMeta = paletteItem.getItemMeta();
         if (paletteMeta != null) {
@@ -50,15 +50,15 @@ public class PatternSelectMenu implements Listener {
         }
         inv.setItem(0, paletteItem);
 
-        // Кнопка отключения
+         
         inv.setItem(4, createMenuItem(Material.BARRIER, "§cБез эффектов", null, false));
 
         String activeEffect = plugin.getConfig().getString("active_player_patterns." + player.getUniqueId().toString(), "");
 
-        // Собираем ВСЕ предметы в один список
+         
         List<ItemStack> allItems = new ArrayList<>();
 
-        // 1. АНИМАЦИИ
+         
         ConfigurationSection animSection = plugin.getConfig().getConfigurationSection("custom_animations");
         if (animSection != null) {
             for (String animName : animSection.getKeys(false)) {
@@ -67,7 +67,7 @@ public class PatternSelectMenu implements Listener {
             }
         }
 
-        // 2. СТАТИЧНЫЕ ШАБЛОНЫ
+         
         ConfigurationSection patternSection = plugin.getConfig().getConfigurationSection("custom_patterns");
         if (patternSection != null) {
             for (String patternName : patternSection.getKeys(false)) {
@@ -76,25 +76,25 @@ public class PatternSelectMenu implements Listener {
             }
         }
 
-        // --- МАТЕМАТИКА СТРАНИЦ ---
-        int itemsPerPage = 36; // Слоты с 9 по 44
+         
+        int itemsPerPage = 36;  
         int totalPages = (int) Math.ceil((double) allItems.size() / itemsPerPage);
         if (totalPages == 0) totalPages = 1;
 
-        // Защита от выхода за пределы
+         
         if (page < 0) page = 0;
         if (page >= totalPages) page = totalPages - 1;
 
         playerPages.put(player.getUniqueId(), page);
 
-        // Выводим только те предметы, которые попадают на текущую страницу
+         
         int startIndex = page * itemsPerPage;
         int slot = 9;
         for (int i = startIndex; i < Math.min(startIndex + itemsPerPage, allItems.size()); i++) {
             inv.setItem(slot++, allItems.get(i));
         }
 
-        // Кнопки навигации (45 и 53 слоты)
+         
         if (page > 0) {
             inv.setItem(45, createNavButton("§a◀ Предыдущая страница"));
         }
@@ -146,7 +146,7 @@ public class PatternSelectMenu implements Listener {
         ItemStack clicked = event.getCurrentItem();
         if (clicked == null || clicked.getType() == Material.AIR) return;
 
-        // Обработка стрелочек
+         
         if (clicked.getType() == Material.ARROW && clicked.hasItemMeta()) {
             String name = clicked.getItemMeta().getDisplayName();
             int currentPage = playerPages.getOrDefault(player.getUniqueId(), 0);
@@ -186,7 +186,7 @@ public class PatternSelectMenu implements Listener {
             player.sendMessage("§aВы выбрали эффект: §e" + effectName);
             player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
 
-            // Обновляем текущую страницу, чтобы загорелось "ВЫБРАНО"
+             
             int currentPage = playerPages.getOrDefault(player.getUniqueId(), 0);
             open(player, currentPage);
         }

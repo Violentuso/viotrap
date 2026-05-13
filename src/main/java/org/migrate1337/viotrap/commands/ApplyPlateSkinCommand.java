@@ -33,20 +33,16 @@ public class ApplyPlateSkinCommand implements CommandExecutor {
             } else {
                 String skinOrAll = args[1];
                 if (!skinOrAll.equalsIgnoreCase("all")) {
-                    if (!this.plugin.getPlateSkinNames().contains(skinOrAll)) {
+                    if (!skinOrAll.equalsIgnoreCase("default") && !this.plugin.getPlateSkinNames().contains(skinOrAll)) {
                         sender.sendMessage(PREFIX + "§cСкин пласта §f" + skinOrAll + " §cне существует.");
                         return true;
                     } else {
-                        int requiredPoints = this.plugin.getConfig().getInt("plate_skins." + skinOrAll + ".points", 0);
+                        int requiredPoints = skinOrAll.equalsIgnoreCase("default") ? 0 : this.plugin.getConfig().getInt("plate_skins." + skinOrAll + ".points", 0);
                         if (requiredPoints > 0 && this.pointsManager.getPoints(target.getUniqueId(), skinOrAll) < requiredPoints) {
                             sender.sendMessage(PREFIX + "§cУ игрока недостаточно поинтов для скина §f" + skinOrAll);
                             return true;
                         } else {
                             this.activeSkinsManager.setActivePlateSkin(target.getUniqueId(), skinOrAll);
-                            if (requiredPoints > 0) {
-                                this.pointsManager.removePoints(target.getUniqueId(), skinOrAll, requiredPoints);
-                            }
-
                             sender.sendMessage(PREFIX + "Скин пласта §x§5§5§F§F§5§5" + skinOrAll + " §fустановлен игроку §x§5§5§F§F§5§5" + target.getName());
                             target.sendMessage(PREFIX + "Вам установлен скин пласта: §x§5§5§F§F§5§5" + skinOrAll);
                             return true;
@@ -58,9 +54,6 @@ public class ApplyPlateSkinCommand implements CommandExecutor {
                         int requiredPoints = this.plugin.getConfig().getInt("plate_skins." + skin + ".points", 0);
                         if (requiredPoints <= 0 || this.pointsManager.getPoints(target.getUniqueId(), skin) >= requiredPoints) {
                             this.activeSkinsManager.setActivePlateSkin(target.getUniqueId(), skin);
-                            if (requiredPoints > 0) {
-                                this.pointsManager.removePoints(target.getUniqueId(), skin, requiredPoints);
-                            }
                             ++appliedCount;
                         }
                     }

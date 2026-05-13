@@ -11,7 +11,7 @@ import java.util.UUID;
 public class ActiveSkinsManager {
     private final VioTrap plugin;
     private File activeSkinsFile;
-    private FileConfiguration activeSkins; // ← вот это было пропущено!
+    private FileConfiguration activeSkins;  
 
     public ActiveSkinsManager(VioTrap plugin) {
         this.plugin = plugin;
@@ -24,29 +24,34 @@ public class ActiveSkinsManager {
             try {
                 activeSkinsFile.createNewFile();
             } catch (IOException e) {
+                plugin.getLogger().warning("Не удалось создать active_skins.yml: " + e.getMessage());
             }
         }
         this.activeSkins = YamlConfiguration.loadConfiguration(activeSkinsFile);
     }
 
-    /** Установить активный скин трапки (заменяет старый) */
+     
     public void setActiveTrapSkin(UUID playerUUID, String skin) {
+        skin = normalizeSkin(skin);
         String path = "players." + playerUUID + ".trap_skin";
         String old = activeSkins.getString(path);
+        if (skin.equals(old)) {
+            return;
+        }
         activeSkins.set(path, skin);
         saveConfig();
-        if (old != null && !old.equals(skin)) {
-        }
     }
 
-    /** Установить активный скин пласта (заменяет старый) */
+     
     public void setActivePlateSkin(UUID playerUUID, String skin) {
+        skin = normalizeSkin(skin);
         String path = "players." + playerUUID + ".plate_skin";
         String old = activeSkins.getString(path);
+        if (skin.equals(old)) {
+            return;
+        }
         activeSkins.set(path, skin);
         saveConfig();
-        if (old != null && !old.equals(skin)) {
-        }
     }
 
     public String getActiveTrapSkin(UUID playerUUID) {
@@ -57,7 +62,7 @@ public class ActiveSkinsManager {
         return activeSkins.getString("players." + playerUUID + ".plate_skin", "default");
     }
 
-    /** Удалить активные скины у игрока (на всякий случай) */
+     
     public void clearActiveSkins(UUID playerUUID) {
         String base = "players." + playerUUID;
         activeSkins.set(base + ".trap_skin", null);
@@ -69,6 +74,11 @@ public class ActiveSkinsManager {
         try {
             activeSkins.save(activeSkinsFile);
         } catch (IOException e) {
+            plugin.getLogger().warning("Не удалось сохранить active_skins.yml: " + e.getMessage());
         }
+    }
+
+    private String normalizeSkin(String skin) {
+        return skin == null || skin.isEmpty() ? "default" : skin;
     }
 }

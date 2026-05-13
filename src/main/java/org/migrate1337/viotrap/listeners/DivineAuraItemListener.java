@@ -2,7 +2,6 @@ package org.migrate1337.viotrap.listeners;
 
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.math.BlockVector3;
-
 import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.flags.StateFlag;
@@ -41,10 +40,12 @@ public class DivineAuraItemListener implements Listener {
             if (item == null || item.getType().isAir() || item.getAmount() <= 0) {
                 return;
             }
+
             if (event.getAction().toString().contains("RIGHT_CLICK")) {
-                if (!plugin.getConditionManager().checkConditions(player, "divine_aura")) {
-                    return; // Условия не выполнены, сообщение уже отправлено менеджером
+                if (!this.plugin.getConditionManager().checkConditions(player, "divine_aura")) {
+                    return;
                 }
+
                 if (player.hasCooldown(item.getType())) {
                     player.sendMessage("§cПодождите перед использованием снова!");
                 } else {
@@ -55,7 +56,6 @@ public class DivineAuraItemListener implements Listener {
                         player.setCooldown(item.getType(), cooldownSeconds * 20);
                         item.setAmount(item.getAmount() - 1);
                         player.sendMessage(this.plugin.getConfig().getString("divine_aura.messages.success_used"));
-
                         Location playerLocation = player.getLocation();
                         String particleType = this.plugin.getDivineAuraItemParticleType();
                         String soundType = this.plugin.getDivineAuraItemSoundType();
@@ -91,6 +91,7 @@ public class DivineAuraItemListener implements Listener {
                 }
             }
         }
+
     }
 
     private boolean isInBannedRegion(Location location, String worldName) {

@@ -45,10 +45,12 @@ public class FirestormItemListener implements Listener {
             if (item == null || item.getType().isAir() || item.getAmount() <= 0) {
                 return;
             }
+
             if (event.getAction().toString().contains("RIGHT_CLICK")) {
-                if (!plugin.getConditionManager().checkConditions(player, "firestorm_item")) {
+                if (!this.plugin.getConditionManager().checkConditions(player, "firestorm_item")) {
                     return;
                 }
+
                 if (player.hasCooldown(item.getType())) {
                     player.sendMessage("§cПодождите перед использованием снова!");
                 } else {
@@ -60,7 +62,7 @@ public class FirestormItemListener implements Listener {
                         Location playerLocation = player.getLocation();
                         boolean foundOpponent = false;
 
-                        for (Player nearbyPlayer : playerLocation.getWorld().getPlayers()) {
+                        for(Player nearbyPlayer : playerLocation.getWorld().getPlayers()) {
                             if (!nearbyPlayer.equals(player) && nearbyPlayer.getLocation().distance(playerLocation) <= (double)radius) {
                                 foundOpponent = true;
                                 if (this.combatLogXHandler.isCombatLogXEnabled()) {
@@ -86,21 +88,22 @@ public class FirestormItemListener implements Listener {
                             this.pvpManagerHandler.tagPlayerForPvP(player, "firestorm_item");
                             player.sendMessage(this.plugin.getConfig().getString("firestorm_item.messages.pvp-enabled-by-player"));
                         }
+
                         int cooldownSeconds = this.plugin.getFirestormItemCooldown();
                         player.setCooldown(item.getType(), cooldownSeconds * 20);
                         item.setAmount(item.getAmount() - 1);
-
                         String soundType = this.plugin.getFirestormItemSoundType();
                         float volume = this.plugin.getFirestormItemSoundVolume();
                         float pitch = this.plugin.getFirestormItemSoundPitch();
                         player.playSound(playerLocation, Sound.valueOf(soundType), volume, pitch);
-                        this.showParticleCircle(playerLocation, (double)radius, Particle.FLAME);
+                        this.showParticleExplosion(playerLocation, (double)radius, Particle.FLAME);
                     } else {
                         player.sendMessage("§cВы не можете использовать данный предмет в этом регионе!");
                     }
                 }
             }
         }
+
     }
 
     private boolean isInBannedRegion(Location location, String worldName) {
@@ -145,16 +148,16 @@ public class FirestormItemListener implements Listener {
         }
     }
 
-    private void showParticleCircle(Location center, double radius, Particle particle) {
-        int points = 100;
-        double increment = (Math.PI * 2D) / (double)points;
+    private void showParticleExplosion(Location center, double radius, Particle particle) {
+        int particleCount = this.plugin.getConfig().getInt("firestorm_item.particle_count", 12);
+        double speed = this.plugin.getConfig().getDouble("firestorm_item.particle_speed", 0.15);
 
-        for(int i = 0; i < points; ++i) {
-            double angle = (double)i * increment;
-            double x = center.getX() + radius * Math.cos(angle);
-            double z = center.getZ() + radius * Math.sin(angle);
-            Location particleLocation = new Location(center.getWorld(), x, center.getY(), z);
-            center.getWorld().spawnParticle(particle, particleLocation, 1, (double)0.0F, (double)0.0F, (double)0.0F, (double)0.0F);
+        for(int i = 0; i < particleCount; ++i) {
+            double angle = (Math.PI * 2D) / (double)particleCount * (double)i;
+            double spawnOffsetX = Math.cos(angle) * 0.8;
+            double spawnOffsetZ = Math.sin(angle) * 0.8;
+            Location particleLocation = new Location(center.getWorld(), center.getX(), center.getY() + 0.1, center.getZ());
+            center.getWorld().spawnParticle(particle, particleLocation, 0, spawnOffsetX, (double)0.0F, spawnOffsetZ, speed);
         }
 
     }

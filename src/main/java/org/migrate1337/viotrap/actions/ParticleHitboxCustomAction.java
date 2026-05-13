@@ -49,11 +49,11 @@ public class ParticleHitboxCustomAction implements CustomAction {
                     player.getWorld().spawnParticle(
                             particle,
                             loc,
-                            5,       // количество частиц
-                            0.2,     // offsetX
-                            0.5,     // offsetY
-                            0.2,     // offsetZ
-                            0        // скорость
+                            5,        
+                            0.2,      
+                            0.5,      
+                            0.2,      
+                            0         
                     );
                 }
             }.runTaskTimer(plugin, 0L, this.updateInterval);

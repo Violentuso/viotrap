@@ -64,7 +64,7 @@ public class ScrambleInventoryCustomAction implements CustomAction {
                 trapPlayers.add(primaryPlayer);
                 if (opponents != null) trapPlayers.addAll(Arrays.asList(opponents));
 
-                // Ищем всех в радиусе, кто не в ловушке
+                 
                 for (org.bukkit.entity.Entity entity : primaryPlayer.getNearbyEntities(radius, radius, radius)) {
                     if (entity instanceof Player) {
                         Player nearbyPlayer = (Player) entity;

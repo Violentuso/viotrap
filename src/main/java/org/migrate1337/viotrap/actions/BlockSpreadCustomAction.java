@@ -15,21 +15,26 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 import org.migrate1337.viotrap.VioTrap;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
 public class BlockSpreadCustomAction implements CustomAction {
     private final String targetType;
-    private final double radius;
+    private final double targetRadius;  
+    private final double actionRadius;  
     private final Material materialToPlace;
     private final double chance;
     private final int revertDelaySeconds;
     private final Random random = new Random();
 
-    public BlockSpreadCustomAction(String targetType, double radius, Material materialToPlace, double chance, int revertDelaySeconds) {
+     
+    public BlockSpreadCustomAction(String targetType, double targetRadius, double actionRadius, Material materialToPlace, double chance, int revertDelaySeconds) {
         this.targetType = targetType.toLowerCase();
-        this.radius = radius;
+        this.targetRadius = targetRadius;
+        this.actionRadius = actionRadius;
         this.materialToPlace = materialToPlace;
         this.chance = chance;
         this.revertDelaySeconds = revertDelaySeconds;
@@ -39,56 +44,86 @@ public class BlockSpreadCustomAction implements CustomAction {
     public void execute(Player primaryPlayer, Player[] opponents, VioTrap plugin) {
         if (primaryPlayer == null || !primaryPlayer.isOnline()) return;
 
-        Location center = primaryPlayer.getLocation();
-        int r = (int) Math.floor(radius);
+        List<Player> validTargets = new ArrayList<>();
 
-        int y = center.getBlockY();
-
-        // Храним локацию и точные данные блока (BlockData)
-        Map<Location, BlockData> originalBlocks = new HashMap<>();
-
-        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
-        RegionManager regionManager = container.get(BukkitAdapter.adapt(center.getWorld()));
-
-        for (int x = -r; x <= r; x++) {
-            for (int z = -r; z <= r; z++) {
-                if (x * x + z * z > r * r) continue;
-
-                Block block = center.getWorld().getBlockAt(center.getBlockX() + x, y, center.getBlockZ() + z);
-
-                if (!block.isReplaceable()) continue;
-
-                if (regionManager != null) {
-                    BlockVector3 vector = BlockVector3.at(block.getX(), block.getY(), block.getZ());
-                    ApplicableRegionSet regions = regionManager.getApplicableRegions(vector);
-                    boolean isInsideTrap = false;
-
-                    for (ProtectedRegion region : regions.getRegions()) {
-                        if (region.getId().contains("_trap_")) {
-                            isInsideTrap = true;
-                            break;
+         
+        switch (targetType) {
+            case "p":
+                validTargets.add(primaryPlayer);
+                break;
+            case "o":
+                if (opponents != null) {
+                    for (Player opp : opponents) validTargets.add(opp);
+                }
+                break;
+            case "rp":
+                if (opponents != null && opponents.length > 0) {
+                    validTargets.add(opponents[random.nextInt(opponents.length)]);
+                }
+                break;
+            case "not-in":
+                if (opponents != null) {
+                    for (Player opp : opponents) {
+                         
+                        if (opp.getLocation().distance(primaryPlayer.getLocation()) > targetRadius) {
+                            validTargets.add(opp);
                         }
                     }
-                    if (isInsideTrap) continue;
                 }
+                break;
+        }
 
-                if (random.nextDouble() * 100.0 <= chance) {
-                    // Сохраняем ТОЧНУЮ копию данных блока (воздух, трава, снег и т.д.)
-                    originalBlocks.put(block.getLocation(), block.getBlockData().clone());
+        if (validTargets.isEmpty()) return;
 
-                    // Ставим наш блок ловушки
-                    block.setType(materialToPlace, false); // false - не обновлять физику соседей при установке
+        int r = (int) Math.floor(actionRadius);
+        Map<Location, BlockData> originalBlocks = new HashMap<>();
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+
+         
+        for (Player target : validTargets) {
+            Location center = target.getLocation();
+            int y = center.getBlockY();
+            RegionManager regionManager = container.get(BukkitAdapter.adapt(center.getWorld()));
+
+            for (int x = -r; x <= r; x++) {
+                for (int z = -r; z <= r; z++) {
+                    if (x * x + z * z > r * r) continue;
+
+                    Block block = center.getWorld().getBlockAt(center.getBlockX() + x, y, center.getBlockZ() + z);
+
+                    if (!block.isReplaceable()) continue;
+
+                    if (regionManager != null) {
+                        BlockVector3 vector = BlockVector3.at(block.getX(), block.getY(), block.getZ());
+                        ApplicableRegionSet regions = regionManager.getApplicableRegions(vector);
+                        boolean isInsideTrap = false;
+
+                        for (ProtectedRegion region : regions.getRegions()) {
+                            if (region.getId().contains("_trap_")) {
+                                isInsideTrap = true;
+                                break;
+                            }
+                        }
+                        if (isInsideTrap) continue;
+                    }
+
+                    if (random.nextDouble() * 100.0 <= chance) {
+                         
+                        if (!originalBlocks.containsKey(block.getLocation())) {
+                            originalBlocks.put(block.getLocation(), block.getBlockData().clone());
+                        }
+                        block.setType(materialToPlace, false);
+                    }
                 }
             }
         }
 
+         
         if (revertDelaySeconds > 0 && !originalBlocks.isEmpty()) {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 for (Map.Entry<Location, BlockData> entry : originalBlocks.entrySet()) {
                     Block blockToRevert = entry.getKey().getBlock();
 
-                    // Важная проверка: возвращаем блок ТОЛЬКО если там до сих пор наша паутина/лава.
-                    // Если игрок уже сам сломал блок или поставил туда обсидиан, мы его не трогаем!
                     if (blockToRevert.getType() == materialToPlace) {
                         blockToRevert.setBlockData(entry.getValue(), false);
                     }

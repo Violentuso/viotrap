@@ -48,9 +48,9 @@ public class DenyItemUseCustomAction implements CustomAction, Listener {
     public static void applyForPlayer(UUID uuid) {
         Player player = Bukkit.getPlayer(uuid);
 
-        if (player != null && !configuredDeniedItems.isEmpty()) { //
+        if (player != null && !configuredDeniedItems.isEmpty()) {  
 
-            if (!trapDeniedItems.containsKey(uuid)) { //
+            if (!trapDeniedItems.containsKey(uuid)) {  
 
 
                 trapDeniedItems.put(uuid, configuredDeniedItems);
@@ -82,7 +82,7 @@ public class DenyItemUseCustomAction implements CustomAction, Listener {
         Player player = e.getPlayer();
         Set<Material> denied = trapDeniedItems.get(player.getUniqueId());
 
-        if (denied == null || denied.isEmpty()) return; // Если нет в списке, не блокируем
+        if (denied == null || denied.isEmpty()) return;  
 
         Material itemType = e.getItem().getType();
 

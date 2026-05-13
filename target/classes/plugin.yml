@@ -1,5 +1,5 @@
 name: VioTrap
-version: '1.6'
+version: '1.1.8'
 main: org.migrate1337.viotrap.VioTrap
 api-version: '1.16'
 softdepend:
@@ -9,4 +9,6 @@ softdepend:
   - PvPManager
 commands:
   viotrap:
-  genschem:
+    description: Main VioTrap command
+    usage: /viotrap <info|give|skins|createskin|createplateskin|reload>
+    aliases: [vt]

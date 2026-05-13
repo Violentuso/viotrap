@@ -152,9 +152,9 @@ public class TrapItemListener implements Listener {
                                             Clipboard clipboard = reader.read();
                                             BlockVector3 min = clipboard.getRegion().getMinimumPoint();
                                             BlockVector3 max = clipboard.getRegion().getMaximumPoint();
-                                            double sizeX = (double) (max.getBlockX() - min.getBlockX() + 1);
-                                            double sizeY = (double) (max.getBlockY() - min.getBlockY() + 1);
-                                            double sizeZ = (double) (max.getBlockZ() - min.getBlockZ() + 1);
+                                            int sizeX = max.getBlockX() - min.getBlockX() + 1;
+                                            int sizeY = max.getBlockY() - min.getBlockY() + 1;
+                                            int sizeZ = max.getBlockZ() - min.getBlockZ() + 1;
 
                                             int cooldownSeconds = (int) (skin.equals("default") ? (double) this.plugin.getTrapCooldown() : this.plugin.getConfig().getInt("skins." + skin + ".cooldown", (int) this.plugin.getTrapCooldown()));
                                             int cooldownTicks = cooldownSeconds * 20;
@@ -176,7 +176,7 @@ public class TrapItemListener implements Listener {
                                             float soundPitch = (float) (skin.equals("default") ? (double) this.plugin.getTrapSoundPitch() : this.plugin.getConfig().getDouble("skins." + skin + ".sound.pitch", (double) this.plugin.getTrapSoundPitch()));
                                             this.applyEffects(player, "skins." + skin + ".effects.player");
                                             player.sendMessage(this.plugin.getConfig().getString("trap.messages.success_used"));
-                                            Player[] opponents = location.getWorld().getNearbyEntities(location, sizeX - (double) 3.0F, sizeY, sizeZ - (double) 3.0F, (entity) -> entity instanceof Player && !entity.equals(player)).stream().filter((entity) -> entity instanceof Player).toArray(Player[]::new);
+                                            Player[] opponents = location.getWorld().getNearbyEntities(location, (double) (sizeX - 3), (double) sizeY, (double) (sizeZ - 3), (entity) -> entity instanceof Player && !entity.equals(player)).stream().filter((entity) -> entity instanceof Player).toArray(Player[]::new);
 
                                             for (Player opponent : opponents) {
                                                 if (this.plugin.getConfig().getBoolean("trap.enable-pvp")) {
@@ -188,53 +188,78 @@ public class TrapItemListener implements Listener {
 
                                             TrapData trapData = new TrapData(player.getUniqueId(), location, skin, (long) this.plugin.getTrapDuration());
                                             this.activeTrapTimers.put(trapId, trapData);
-                                            this.createTrapRegion(player, location, sizeX, sizeY, sizeZ, skin);
+                                            BlockVector3 origin = clipboard.getOrigin();
+                                            int minRelX = min.getBlockX() - origin.getBlockX();
+                                            int maxRelX = max.getBlockX() - origin.getBlockX();
+                                            int minRelY = min.getBlockY() - origin.getBlockY();
+                                            int maxRelY = max.getBlockY() - origin.getBlockY();
+                                            int minRelZ = min.getBlockZ() - origin.getBlockZ();
+                                            int maxRelZ = max.getBlockZ() - origin.getBlockZ();
+                                            this.createTrapRegion(player, location, minRelX, maxRelX, minRelY, maxRelY, minRelZ, maxRelZ, skin);
+
+                                            Map<org.bukkit.Location, org.bukkit.block.data.BlockData> voidBlocks = this.captureStructureVoidBlocks(location, clipboard);
+
+                                            this.saveReplacedBlocks(player.getUniqueId(), location, clipboard, trapId);
+                                            this.saveTrapToConfig(player, location, skin, trapId);
+
+                                            final String finalSkin = skin;
+                                            final Player finalPlayer = player;
+                                            final Location finalLocation = location;
+                                            final Player[] finalOpponents = opponents;
+                                            final String finalSoundType = soundType;
+                                            final float finalSoundVolume = soundVolume;
+                                            final float finalSoundPitch = soundPitch;
+                                            final String finalTrapId = trapId;
+                                            final String finalTrapIdForTimer = trapId;
+                                            final String finalSkinForTimer = skin;
+                                            final Location finalLocationForTimer = location;
 
                                             try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(location.getWorld()))) {
                                                 BlockVector3 pastePosition = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
 
-                                                this.saveReplacedBlocks(player.getUniqueId(), location, clipboard, trapId);
-                                                this.saveTrapToConfig(player, location, skin, trapId);
+                                                plugin.getLogger().info("[VioTrap][DEBUG] === PASTE START === pastePos=" + pastePosition);
 
                                                 ClipboardHolder holder = new ClipboardHolder(clipboard);
+                                                plugin.getLogger().info("[VioTrap][DEBUG] Calling Operations.complete (paste)...");
                                                 Operations.complete(holder.createPaste(editSession).to(pastePosition).build());
-
-                                                if (!skin.equals("default")) {
-                                                    int points = plugin.getSkinPointsManager().getPoints(player.getUniqueId(), skin);
-                                                    if (points > 1) {
-                                                        plugin.getSkinPointsManager().removePoints(player.getUniqueId(), skin, 1);
-                                                    } else if (points == 1) {
-                                                        plugin.getSkinPointsManager().removePoints(player.getUniqueId(), skin, 1);
-                                                        this.activeSkinsManager.setActiveTrapSkin(player.getUniqueId(), "default");
-                                                    }
-                                                }
-                                                List<CustomAction> actions = CustomActionFactory.loadActions(skin, plugin);
-                                                this.skinActions.put(skin, actions);
-
-                                                location.getWorld().playSound(location, Sound.valueOf(soundType), soundVolume, soundPitch);
-                                                for (CustomAction action : actions) {
-                                                    action.execute(player, opponents, this.plugin);
-                                                }
-                                                this.startTrapParticleTask(player.getUniqueId(), location, trapId, plugin.getTrapDuration() * 20);
-                                                String finalSkin = skin;
-                                                Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
-                                                    TrapData data = this.activeTrapTimers.get(trapId);
-                                                    if (data != null) {
-                                                        this.restoreBlocks(data.getPlayerId(), trapId);
-
-                                                        this.removeTrapRegion(trapId, data.getLocation());
-                                                        this.removeTrapFromFile(data.getLocation());
-                                                        this.activeTrapTimers.remove(trapId);
-                                                        String soundTypeEnded = finalSkin.equals("default") ? this.plugin.getTrapSoundTypeEnded() : this.plugin.getConfig().getString("skins." + finalSkin + ".sound.type-ended", this.plugin.getTrapSoundTypeEnded());
-                                                        float soundVolumeEnded = (float) (finalSkin.equals("default") ? (double) this.plugin.getTrapSoundVolumeEnded() : this.plugin.getConfig().getDouble("skins." + finalSkin + ".sound.volume-ended", (double) this.plugin.getTrapSoundVolumeEnded()));
-                                                        float soundPitchEnded = (float) (finalSkin.equals("default") ? (double) this.plugin.getTrapSoundPitchEnded() : this.plugin.getConfig().getDouble("skins." + finalSkin + ".sound.pitch-ended", (double) this.plugin.getTrapSoundPitchEnded()));
-
-                                                        location.getWorld().playSound(location, Sound.valueOf(soundTypeEnded), soundVolumeEnded, soundPitchEnded);
-                                                    }
-                                                }, (int) (skin.equals("default") ? (double) this.plugin.getTrapDuration() * 20 : this.plugin.getConfig().getInt("skins." + skin + ".duration", (int) this.plugin.getTrapCooldown()) * 20));
-
+                                                plugin.getLogger().info("[VioTrap][DEBUG] Paste done.");
                                             }
+                                            plugin.getLogger().info("[VioTrap][DEBUG] EditSession closed. Restoring " + voidBlocks.size() + " void block(s)...");
+                                            this.restoreStructureVoidBlocks(voidBlocks);
+                                            plugin.getLogger().info("[VioTrap][DEBUG] === PASTE END ===");
 
+                                            if (!skin.equals("default")) {
+                                                int points = plugin.getSkinPointsManager().getPoints(player.getUniqueId(), skin);
+                                                if (points > 1) {
+                                                    plugin.getSkinPointsManager().removePoints(player.getUniqueId(), skin, 1);
+                                                } else if (points == 1) {
+                                                    plugin.getSkinPointsManager().removePoints(player.getUniqueId(), skin, 1);
+                                                    this.activeSkinsManager.setActiveTrapSkin(player.getUniqueId(), "default");
+                                                }
+                                            }
+                                            List<CustomAction> actions = CustomActionFactory.loadActions(skin, plugin);
+                                            this.skinActions.put(skin, actions);
+
+                                            location.getWorld().playSound(location, Sound.valueOf(soundType), soundVolume, soundPitch);
+                                            for (CustomAction action : actions) {
+                                                action.execute(player, opponents, this.plugin);
+                                            }
+                                            this.startTrapParticleTask(player.getUniqueId(), location, trapId, plugin.getTrapDuration() * 20);
+                                            Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
+                                                TrapData data = this.activeTrapTimers.get(trapId);
+                                                if (data != null) {
+                                                    this.restoreBlocks(data.getPlayerId(), finalTrapId);
+
+                                                    this.removeTrapRegion(finalTrapId, data.getLocation());
+                                                    this.removeTrapFromFile(data.getLocation());
+                                                    this.activeTrapTimers.remove(finalTrapId);
+                                                    String soundTypeEnded = finalSkin.equals("default") ? this.plugin.getTrapSoundTypeEnded() : this.plugin.getConfig().getString("skins." + finalSkin + ".sound.type-ended", this.plugin.getTrapSoundTypeEnded());
+                                                    float soundVolumeEnded = (float) (finalSkin.equals("default") ? (double) this.plugin.getTrapSoundVolumeEnded() : this.plugin.getConfig().getDouble("skins." + finalSkin + ".sound.volume-ended", (double) this.plugin.getTrapSoundVolumeEnded()));
+                                                    float soundPitchEnded = (float) (finalSkin.equals("default") ? (double) this.plugin.getTrapSoundPitchEnded() : this.plugin.getConfig().getDouble("skins." + finalSkin + ".sound.pitch-ended", (double) this.plugin.getTrapSoundPitchEnded()));
+
+                                                    finalLocation.getWorld().playSound(finalLocation, Sound.valueOf(soundTypeEnded), soundVolumeEnded, soundPitchEnded);
+                                                }
+                                            }, (int) (finalSkin.equals("default") ? (double) this.plugin.getTrapDuration() * 20 : this.plugin.getConfig().getInt("skins." + finalSkin + ".duration", (int) this.plugin.getTrapCooldown()) * 20));
                                         }
                                     } catch (Exception e) {
                                         e.printStackTrace();
@@ -651,20 +676,9 @@ public class TrapItemListener implements Listener {
     private void saveReplacedBlocks(UUID playerId, Location center, Clipboard clipboard, String regionId) {
         Map<Location, TrapBlockData> replacedBlocks = this.regionReplacedBlocks.computeIfAbsent(regionId, k -> new HashMap<>());
 
+        BlockVector3 origin = clipboard.getOrigin();
         BlockVector3 min = clipboard.getRegion().getMinimumPoint();
         BlockVector3 max = clipboard.getRegion().getMaximumPoint();
-
-        double sizeX = (double) (max.getBlockX() - min.getBlockX() + 1);
-        double sizeY = (double) (max.getBlockY() - min.getBlockY() + 1);
-        double sizeZ = (double) (max.getBlockZ() - min.getBlockZ() + 1);
-
-        int offsetX = (int) (-(sizeX / 2.0F));
-        int offsetY = (int) (-(sizeY / 2.0F)) + 1;
-        int offsetZ = (int) (-(sizeZ / 2.0F));
-
-        if (sizeX == 5) offsetY = (int) (-(sizeY / 2.0F)) + 1;
-        else if (sizeX == 7) offsetY = (int) (-(sizeY / 2.0F)) + 2;
-        else if (sizeX == 9) offsetY = (int) (-(sizeY / 2.0F)) + 2;
 
         Set<Location> processedDoubleChestPairs = new HashSet<>();
 
@@ -672,9 +686,9 @@ public class TrapItemListener implements Listener {
             for (int y = min.getBlockY(); y <= max.getBlockY(); y++) {
                 for (int z = min.getBlockZ(); z <= max.getBlockZ(); z++) {
                     Location loc = new Location(center.getWorld(),
-                            Math.floor(center.getX() + (double) (x - min.getBlockX() + offsetX)),
-                            Math.floor(center.getY() + (double) (y - min.getBlockY() + offsetY)),
-                            Math.floor(center.getZ() + (double) (z - min.getBlockZ() + offsetZ)));
+                            (double) (center.getBlockX() + (x - origin.getBlockX())),
+                            (double) (center.getBlockY() + (y - origin.getBlockY())),
+                            (double) (center.getBlockZ() + (z - origin.getBlockZ())));
 
                     Block block = loc.getBlock();
                     BlockState state = block.getState();
@@ -935,10 +949,14 @@ public class TrapItemListener implements Listener {
                                                 Clipboard clipboard = reader.read();
                                                 BlockVector3 min = clipboard.getRegion().getMinimumPoint();
                                                 BlockVector3 max = clipboard.getRegion().getMaximumPoint();
-                                                double sizeX = (double) (max.getBlockX() - min.getBlockX() + 1);
-                                                double sizeY = (double) (max.getBlockY() - min.getBlockY() + 1);
-                                                double sizeZ = (double) (max.getBlockZ() - min.getBlockZ() + 1);
-                                                this.createTrapRegion((Player) null, location, sizeX, sizeY, sizeZ, skin);
+                                                BlockVector3 origin = clipboard.getOrigin();
+                                                int minRelX = min.getBlockX() - origin.getBlockX();
+                                                int maxRelX = max.getBlockX() - origin.getBlockX();
+                                                int minRelY = min.getBlockY() - origin.getBlockY();
+                                                int maxRelY = max.getBlockY() - origin.getBlockY();
+                                                int minRelZ = min.getBlockZ() - origin.getBlockZ();
+                                                int maxRelZ = max.getBlockZ() - origin.getBlockZ();
+                                                this.createTrapRegion((Player) null, location, minRelX, maxRelX, minRelY, maxRelY, minRelZ, maxRelZ, skin);
                                             }
                                         }
                                     } catch (Exception e) {}
@@ -969,25 +987,22 @@ public class TrapItemListener implements Listener {
         }
     }
 
-    public void createTrapRegion(Player player, Location location, double sizeX, double sizeY, double sizeZ, String skin) {
+    public void createTrapRegion(Player player, Location location, int minRelX, int maxRelX, int minRelY, int maxRelY, int minRelZ, int maxRelZ, String skin) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(location.getWorld()));
         String playerName = player != null ? player.getName() : "offline";
         String trapId = playerName + "_trap_" + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
 
-        BlockVector3 min = BlockVector3.at((double) location.getBlockX() - sizeX / (double) 2.0F, (double) location.getBlockY() - sizeY / (double) 2.0F + (double) 2.0F, (double) location.getBlockZ() - sizeZ / (double) 2.0F);
-        BlockVector3 max = BlockVector3.at((double) location.getBlockX() + sizeX / (double) 2.0F, (double) location.getBlockY() + sizeY / (double) 2.0F + (double) 1.0F, (double) location.getBlockZ() + sizeZ / (double) 2.0F);
-
-        if (sizeX == 5.0) {
-            min = BlockVector3.at(location.getX() - sizeX / 2.0, location.getY() - sizeY / 2.0 + 2.0, location.getZ() - sizeZ / 2.0);
-            max = BlockVector3.at(location.getX() + sizeX / 2.0, location.getY() + sizeY / 2.0 + 1.0, location.getZ() + sizeZ / 2.0);
-        } else if (sizeX == 7.0) {
-            min = BlockVector3.at(location.getX() - sizeX / 2.0, location.getY() - sizeY / 2.0 + 3.0, location.getZ() - sizeZ / 2.0);
-            max = BlockVector3.at(location.getX() + sizeX / 2.0, location.getY() + sizeY / 2.0 + 2.0, location.getZ() + sizeZ / 2.0);
-        } else if (sizeX == 9.0) {
-            min = BlockVector3.at(location.getX() - sizeX / 2.0, location.getY() - sizeY / 2.0 + 4.0, location.getZ() - sizeZ / 2.0);
-            max = BlockVector3.at(location.getX() + sizeX / 2.0, location.getY() + sizeY / 2.0 + 3.0, location.getZ() + sizeZ / 2.0);
-        }
+        BlockVector3 min = BlockVector3.at(
+                location.getBlockX() + minRelX,
+                location.getBlockY() + minRelY,
+                location.getBlockZ() + minRelZ
+        );
+        BlockVector3 max = BlockVector3.at(
+                location.getBlockX() + maxRelX,
+                location.getBlockY() + maxRelY,
+                location.getBlockZ() + maxRelZ
+        );
 
         if (regionManager != null) {
             ProtectedCuboidRegion region = new ProtectedCuboidRegion(trapId, min, max);
@@ -1056,5 +1071,66 @@ public class TrapItemListener implements Listener {
 
     public Map<String, List<CustomAction>> getSkinActions() {
         return this.skinActions;
+    }
+
+    private Map<Location, org.bukkit.block.data.BlockData> captureStructureVoidBlocks(Location center, Clipboard clipboard) {
+        Map<Location, org.bukkit.block.data.BlockData> voidBlocks = new HashMap<>();
+        BlockVector3 origin = clipboard.getOrigin();
+        BlockVector3 min = clipboard.getRegion().getMinimumPoint();
+        BlockVector3 max = clipboard.getRegion().getMaximumPoint();
+        World world = center.getWorld();
+
+        plugin.getLogger().info("[VioTrap][DEBUG] captureStructureVoidBlocks START");
+        plugin.getLogger().info("[VioTrap][DEBUG]   center=" + center.getBlockX() + "," + center.getBlockY() + "," + center.getBlockZ());
+        plugin.getLogger().info("[VioTrap][DEBUG]   origin=" + origin.getBlockX() + "," + origin.getBlockY() + "," + origin.getBlockZ());
+        plugin.getLogger().info("[VioTrap][DEBUG]   region min=" + min + " max=" + max);
+
+        // Выводим все уникальные типы блоков в схематике — чтобы увидеть точный ID structure_void
+        java.util.Set<String> foundTypes = new java.util.LinkedHashSet<>();
+        for (int x = min.getBlockX(); x <= max.getBlockX(); x++) {
+            for (int y = min.getBlockY(); y <= max.getBlockY(); y++) {
+                for (int z = min.getBlockZ(); z <= max.getBlockZ(); z++) {
+                    foundTypes.add(clipboard.getBlock(BlockVector3.at(x, y, z)).getBlockType().getId());
+                }
+            }
+        }
+        plugin.getLogger().info("[VioTrap][DEBUG]   All block type IDs in clipboard: " + foundTypes);
+
+        for (int x = min.getBlockX(); x <= max.getBlockX(); x++) {
+            for (int y = min.getBlockY(); y <= max.getBlockY(); y++) {
+                for (int z = min.getBlockZ(); z <= max.getBlockZ(); z++) {
+                    String blockId = clipboard.getBlock(BlockVector3.at(x, y, z)).getBlockType().getId();
+                    if (blockId.equals("minecraft:structure_void") || blockId.equals("structure_void")) {
+                        Location worldLoc = new Location(
+                                world,
+                                center.getBlockX() + (x - origin.getBlockX()),
+                                center.getBlockY() + (y - origin.getBlockY()),
+                                center.getBlockZ() + (z - origin.getBlockZ())
+                        );
+
+                        Block block = worldLoc.getBlock();
+                        plugin.getLogger().info("[VioTrap][DEBUG]   Found structure_void at clipboard(" + x + "," + y + "," + z + ")"
+                                + " -> world(" + worldLoc.getBlockX() + "," + worldLoc.getBlockY() + "," + worldLoc.getBlockZ() + ")"
+                                + " current world block=" + block.getType().name());
+                        voidBlocks.put(worldLoc.clone(), block.getBlockData());
+                    }
+                }
+            }
+        }
+
+        plugin.getLogger().info("[VioTrap][DEBUG] captureStructureVoidBlocks END: captured " + voidBlocks.size() + " void block(s)");
+        return voidBlocks;
+    }
+
+    private void restoreStructureVoidBlocks(Map<Location, org.bukkit.block.data.BlockData> voidBlocks) {
+        plugin.getLogger().info("[VioTrap][DEBUG] restoreStructureVoidBlocks: restoring " + voidBlocks.size() + " block(s)");
+        for (Map.Entry<Location, org.bukkit.block.data.BlockData> entry : voidBlocks.entrySet()) {
+            Block block = entry.getKey().getBlock();
+            String before = block.getType().name();
+            block.setBlockData(entry.getValue());
+            plugin.getLogger().info("[VioTrap][DEBUG]   Restored at ("
+                    + entry.getKey().getBlockX() + "," + entry.getKey().getBlockY() + "," + entry.getKey().getBlockZ() + ")"
+                    + " " + before + " -> " + entry.getValue().getMaterial().name());
+        }
     }
 }

@@ -15,14 +15,21 @@ public class TrapItem {
 
     public static ItemStack getTrapItem(int amount, String skin) {
         if (amount <= 0) return new ItemStack(Material.AIR);
-        ItemStack item = new ItemStack(Material.getMaterial(VioTrap.getPlugin().getTrapType()), amount);
+        String appliedSkin = skin == null || skin.isEmpty() ? "default" : skin;
+        String materialName = VioTrap.getPlugin().getTrapType();
+        Material material = materialName == null ? null : Material.getMaterial(materialName.toUpperCase());
+        if (material == null) {
+            material = Material.NETHERITE_SCRAP;
+        }
+        ItemStack item = new ItemStack(material, amount);
 
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(VioTrap.getPlugin().getTrapDisplayName());
-            List<String> lore = VioTrap.getPlugin().getTrapDescription();
+            meta.setDisplayName(VioTrap.getPlugin().getSkinDisplayName(appliedSkin));
+            List<String> lore = VioTrap.getPlugin().getSkinDescription(appliedSkin);
             meta.setLore(lore);
-            meta.getPersistentDataContainer().set(TRAP_ITEM_KEY, PersistentDataType.STRING, "default_trap");
+            meta.getPersistentDataContainer().set(TRAP_ITEM_KEY, PersistentDataType.STRING, DEFAULT_TRAP_ID);
+            meta.getPersistentDataContainer().set(SKIN_KEY, PersistentDataType.STRING, appliedSkin);
 
 
             item.setItemMeta(meta);

@@ -19,10 +19,10 @@ public class ColorChatListener implements Listener {
     public void onChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
 
-        // Проверяем, ждет ли плагин ввода цвета от этого игрока
+         
         if (!ColorPaletteMenu.waitingForColor.contains(player.getUniqueId())) return;
 
-        event.setCancelled(true); // Блокируем отправку сообщения в глобальный чат
+        event.setCancelled(true);  
 
         String message = event.getMessage().trim();
 
@@ -35,13 +35,13 @@ public class ColorChatListener implements Listener {
         String rgbToSave = null;
 
         try {
-            // Пробуем распарсить HEX код (например #FF00FF или FF00FF)
+             
             if (message.startsWith("#") || (message.length() == 6 && !message.contains(","))) {
                 String hex = message.startsWith("#") ? message : "#" + message;
                 java.awt.Color javaColor = java.awt.Color.decode(hex);
                 rgbToSave = javaColor.getRed() + "," + javaColor.getGreen() + "," + javaColor.getBlue();
             }
-            // Пробуем распарсить RGB (поддерживает запятые и пробелы: "255, 0, 0" или "255 0 0")
+             
             else {
                 String[] parts = message.split("[, ]+");
                 if (parts.length == 3) {
@@ -54,14 +54,14 @@ public class ColorChatListener implements Listener {
                 }
             }
         } catch (Exception ignored) {
-            // Если игрок написал ерунду, rgbToSave останется null
+             
         }
 
         if (rgbToSave != null) {
             ColorPaletteMenu.waitingForColor.remove(player.getUniqueId());
-            final String finalRgb = rgbToSave; // Переменная для потока
+            final String finalRgb = rgbToSave;  
 
-            // Выполняем сохранение в основном потоке, так как чат асинхронный
+             
             org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
                 if (plugin.getParticleEditorManager().isEditing(player)) {
                     plugin.getParticleEditorManager().getSession(player).setCurrentBrushColor(finalRgb);

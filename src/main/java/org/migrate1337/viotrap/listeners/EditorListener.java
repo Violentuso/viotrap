@@ -28,7 +28,7 @@ public class EditorListener implements Listener {
     public void onInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
 
-        // Если игрок не в редакторе - игнорируем
+         
         if (!plugin.getParticleEditorManager().isEditing(player)) return;
 
         ItemStack item = event.getItem();
@@ -38,7 +38,7 @@ public class EditorListener implements Listener {
 
         boolean isShift = player.isSneaking();
 
-        // Пускаем луч, чтобы знать ТОЧНУЮ позицию и ГРАНЬ блока
+         
         org.bukkit.util.RayTraceResult result = player.rayTraceBlocks(6.0, org.bukkit.FluidCollisionMode.NEVER);
         Vector exactHitPos = (result != null && result.getHitPosition() != null) ? result.getHitPosition() : null;
         org.bukkit.block.BlockFace hitFace = (result != null) ? result.getHitBlockFace() : org.bukkit.block.BlockFace.UP;
@@ -61,7 +61,7 @@ public class EditorListener implements Listener {
             return;
         }
 
-        // --- 2. ФИГУРЫ ---
+         
         String shapeName = null;
         if (item.getType() == Material.SLIME_BALL) shapeName = "Круг";
         else if (item.getType() == Material.BRICK) shapeName = "Квадрат";
@@ -71,7 +71,7 @@ public class EditorListener implements Listener {
             event.setCancelled(true);
 
             if (action == Action.LEFT_CLICK_AIR || action == Action.LEFT_CLICK_BLOCK) {
-                // ЛКМ - Изменяем размер фигуры
+                 
                 EditorSession session = plugin.getParticleEditorManager().getSession(player);
                 if (shapeName.equals("Круг")) { session.cycleCircleRadius(); player.sendMessage("§eРадиус круга: §a" + session.getCircleRadius()); }
                 if (shapeName.equals("Квадрат")) { session.cycleSquareSize(); player.sendMessage("§eРазмер квадрата: §a" + session.getSquareSize()); }
@@ -79,7 +79,7 @@ public class EditorListener implements Listener {
                 player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1f, 1.5f);
 
             } else if (action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK) {
-                // ПКМ - Рисуем фигуру
+                 
                 if (exactHitPos != null) {
                     plugin.getParticleEditorManager().handleShapeClick(player, exactHitPos, hitFace, shapeName);
                 } else {

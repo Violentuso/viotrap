@@ -17,14 +17,14 @@ public class EditorSession {
     private final ItemStack[] savedArmor;
     private final boolean wasAllowFlight;
     private final boolean wasFlying;
-    private int brushSize = 1;    // От 1 до 15
-    private int circleRadius = 6; // От 1 до 15 (Физический размер от 0.3 до 5.0 блоков)
-    private int squareSize = 6;   // От 1 до 15
+    private int brushSize = 1;     
+    private int circleRadius = 6;  
+    private int squareSize = 6;    
     private int triangleSize = 6;
-    // ФИКС: Теперь мы храним Вектор (позицию) -> RGB Цвет (строку)
+     
     private final Map<Vector, String> coloredPoints = new HashMap<>();
 
-    // Цвет кисти по умолчанию (Лаймовый)
+     
     private String currentBrushColor = "0,255,0";
 
     public EditorSession(UUID playerId, String patternName, Location originalLocation, Location arenaCenter, ItemStack[] savedInventory, ItemStack[] savedArmor, boolean wasAllowFlight, boolean wasFlying) {
@@ -49,15 +49,15 @@ public class EditorSession {
     public int getBrushSize() { return brushSize; }
     public void cycleBrushSize() { brushSize = (brushSize % 15) + 1; }
 
-    // Методы для круга
+     
     public int getCircleRadius() { return circleRadius; }
     public void cycleCircleRadius() { circleRadius = (circleRadius % 15) + 1; }
 
-    // Методы для квадрата
+     
     public int getSquareSize() { return squareSize; }
     public void cycleSquareSize() { squareSize = (squareSize % 15) + 1; }
 
-    // Методы для треугольника
+     
     public int getTriangleSize() { return triangleSize; }
     public void cycleTriangleSize() { triangleSize = (triangleSize % 15) + 1; }
     public Map<Vector, String> getColoredPoints() { return coloredPoints; }

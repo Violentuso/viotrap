@@ -32,7 +32,7 @@ trap:
     pvp-enabled: "§cВы использовали трапку и получили режим пвп!"
     success_used: "§aВы успешно использовали предмет."
   sound:
-    type: "BLOCK_ANVIL_PLACE" # https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Sound.html - Все типы звуков в игре.
+    type: "BLOCK_ANVIL_PLACE" # https: 
     volume: 10.0f # Громкость звука.
     pitch: 1.0f # Тон звука.
   banned_regions: #Регионы, где будет запрещено использовать предмет
@@ -67,7 +67,7 @@ plate:
   up_schematic: "plate_up.schem" # Значение pitch от -45 до -90(Значение yaw в этом случае неважно)
   down_schematic: "plate.schem" # Значение pitch от 45 до 90(Значение yaw в этом случае неважно)
   sound:
-    type: "BLOCK_ANVIL_PLACE" # https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Sound.html - Все типы звуков в игре.
+    type: "BLOCK_ANVIL_PLACE" # https: 
     volume: 10.0f # Громкость звука.
     pitch: 1.0f # Тон звука.
   banned_regions:
@@ -88,6 +88,8 @@ reveal_item:
   glow_duration: 5
   duration: 5 # Это длительность Пвп-режима
   particle_type: CLOUD
+  particle_count: 8
+  particle_speed: 0.2
   messages:
     pvp-enabled-by-player: "§cВы использовали дезориентацию и получили режим пвп!"
     pvp-enabled-for-player: "§cВозле вас использовали дезориентацию и вы получили режим пвп!"
@@ -126,6 +128,8 @@ disorient_item:
     volume: 1.0f
     pitch: 1.0f
   particle_type: "SMOKE_LARGE"
+  particle_count: 8
+  particle_speed: 0.3
   banned_regions:
     - spawn
     - new
@@ -181,6 +185,8 @@ firestorm_item:
   radius: 5
   fire_duration: 5
   duration: 5 # Это длительность Пвп-режима
+  particle_count: 12
+  particle_speed: 0.15
   sound:
     type: ENTITY_BLAZE_SHOOT
     volume: 1.0

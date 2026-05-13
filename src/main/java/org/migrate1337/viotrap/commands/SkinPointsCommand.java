@@ -86,7 +86,9 @@ public class SkinPointsCommand implements CommandExecutor, TabCompleter {
                 return name.toLowerCase().startsWith(args[1].toLowerCase());
             }).collect(Collectors.toList());
         } else if (args.length == 3) {
-            return (List)this.plugin.getSkinNames().stream().filter((skin) -> {
+            List<String> skins = new java.util.ArrayList<>(this.plugin.getSkinNames());
+            skins.addAll(this.plugin.getPlateSkinNames());
+            return (List)skins.stream().filter((skin) -> {
                 return skin.toLowerCase().startsWith(args[2].toLowerCase());
             }).collect(Collectors.toList());
         } else {

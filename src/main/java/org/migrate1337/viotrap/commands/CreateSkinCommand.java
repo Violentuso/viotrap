@@ -5,7 +5,6 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.migrate1337.viotrap.VioTrap;
-import org.migrate1337.viotrap.gui.SkinCreationMenu;
 
 public class CreateSkinCommand implements CommandExecutor {
     private final VioTrap plugin;
@@ -24,8 +23,7 @@ public class CreateSkinCommand implements CommandExecutor {
             return false;
         } else {
             Player player = (Player)sender;
-            SkinCreationMenu menu = new SkinCreationMenu(this.plugin);
-            menu.openMenu(player);
+            this.plugin.getSkinCreationMenu().openMenu(player);
             return true;
         }
     }

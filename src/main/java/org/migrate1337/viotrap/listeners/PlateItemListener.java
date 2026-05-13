@@ -174,7 +174,7 @@ public class PlateItemListener implements Listener {
                     int pos2Y = maxPoint.getBlockY() - origin.getBlockY();
                     int pos2Z = maxPoint.getBlockZ() - origin.getBlockZ();
 
-                    String plateId = "plate_" + player.getName() + "_" + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
+                    String plateId = "plate_" + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
 
                     try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(player.getWorld()))) {
                         BlockVector3 pastePosition = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
@@ -386,7 +386,7 @@ public class PlateItemListener implements Listener {
     }
 
     private void createPlateRegion(Player player, Location location, int pos1X, int pos1Y, int pos1Z, int pos2X, int pos2Y, int pos2Z) {
-        String regionName = "plate_" + player.getName();
+        String regionName = "plate_" + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
         ProtectedCuboidRegion region = new ProtectedCuboidRegion(regionName, BlockVector3.at(location.getBlockX() + pos1X, location.getBlockY() + pos1Y, location.getBlockZ() + pos1Z), BlockVector3.at(location.getBlockX() + pos2X, location.getBlockY() + pos2Y, location.getBlockZ() + pos2Z));
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(location.getWorld()));
@@ -414,7 +414,7 @@ public class PlateItemListener implements Listener {
     }
 
     private void removePlateRegion(Player player, Location location) {
-        String regionName = "plate_" + player.getName();
+        String regionName = "plate_" + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(location.getWorld()));
         if (regionManager != null) {
@@ -629,9 +629,7 @@ public class PlateItemListener implements Listener {
                             if (Bukkit.getWorld(world) == null) continue;
                             Location location = new Location(Bukkit.getWorld(world), (double) x, (double) y, (double) z);
 
-                            String playerName = Bukkit.getOfflinePlayer(playerId).getName();
-                            if (playerName == null) playerName = "Unknown";
-                            String plateId = "plate_" + playerName + "_" + x + "_" + y + "_" + z;
+                            String plateId = "plate_" + x + "_" + y + "_" + z;
 
                             long currentTime = System.currentTimeMillis();
                             long remainingMillis = endTime - currentTime;
